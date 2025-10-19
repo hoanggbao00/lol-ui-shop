@@ -1,98 +1,85 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Button, Card, Chip, useTheme } from "heroui-native";
+import { ScrollView, View } from "react-native";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+export default function Index() {
+  const { isDark } = useTheme();
 
-export default function HomeScreen() {
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <ScrollView className="flex-1 bg-background">
+      <View className="p-6 gap-6">
+        {/* Card component */}
+        <Card>
+          <Card.Header>
+            <Card.Title>Welcome to League of Legends Shop</Card.Title>
+            <Card.Description>
+              Browse and purchase your favorite champions and skins
+            </Card.Description>
+          </Card.Header>
+          <Card.Body className="gap-4">
+            <View className="flex-row gap-2">
+              <Chip variant="primary" color="accent">New</Chip>
+              <Chip variant="secondary" color="success">Featured</Chip>
+              <Chip variant="tertiary" color="warning">Sale</Chip>
+            </View>
+          </Card.Body>
+          <Card.Footer className="gap-3 mt-4">
+            <Button variant="primary" onPress={() => console.log('Browse pressed')}>
+              Browse Shop
+            </Button>
+            <Button variant="ghost" onPress={() => console.log('View account pressed')}>
+              My Account
+            </Button>
+          </Card.Footer>
+        </Card>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+        <Card surfaceVariant="2" className="rounded-xl">
+          <View className="gap-4">
+            <Card.Header>
+              <View className="bg-accent rounded-full w-12 h-12 items-center justify-center">
+                <Card.Title className="text-accent-foreground">RP</Card.Title>
+              </View>
+            </Card.Header>
+            <Card.Body>
+              <Card.Title>Riot Points</Card.Title>
+              <Card.Description className="mb-4">
+                Purchase Riot Points to buy champions, skins, and more.
+              </Card.Description>
+            </Card.Body>
+            <Card.Footer>
+              <Button variant="primary" onPress={() => console.log('Buy RP pressed')}>
+                Buy RP
+              </Button>
+            </Card.Footer>
+          </View>
+        </Card>
+
+        <Card>
+          <Card.Header>
+            <Card.Title>Daily Deals</Card.Title>
+            <Card.Description>
+              Special offers refreshed daily
+            </Card.Description>
+          </Card.Header>
+          <Card.Body className="gap-4 mt-2">
+            <View className="flex-row flex-wrap gap-2">
+              <Chip size="sm" variant="secondary" color="danger">
+                <Chip.Label>50% OFF</Chip.Label>
+              </Chip>
+              <Chip size="sm" variant="secondary" color="accent">
+                <Chip.Label>Limited Time</Chip.Label>
+              </Chip>
+              <Chip size="sm" variant="secondary" color="success">
+                <Chip.Label>Exclusive</Chip.Label>
+              </Chip>
+            </View>
+          </Card.Body>
+          <Card.Footer className="mt-4">
+            <Button variant="secondary" onPress={() => console.log('View deals pressed')}>
+              View Deals
+            </Button>
+          </Card.Footer>
+        </Card>
+      </View>
+    </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
