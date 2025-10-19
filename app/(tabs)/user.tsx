@@ -46,7 +46,7 @@ export default function User() {
   ];
 
   return (
-    <ScrollView className="flex-1 bg-lol-black">
+    <ScrollView className="flex-1 relative bg-black">
       <View className="p-6 gap-6">
         <Image source={icons.Frame} style={styles.frame} />
         <Text style={styles.name}>Tên: Nam Nguyen</Text>
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     borderColor: colors["lol-gold"],
     padding: 20,
     gap: 20,
-    borderRadius: 10,
+    borderRadius: 20,
   },
   cardItem: {
     flexDirection: "row",
