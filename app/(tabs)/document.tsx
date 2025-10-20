@@ -1,115 +1,80 @@
 import Background from "@/components/Background";
-import { colors } from "@/libs/colors";
+import Inputs from '@/components/document/Inputs';
+import ListView from "@/components/home/ListView";
 import { Image } from "expo-image";
-import { StyleSheet, Text, View } from "react-native";
+import { ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 
 const icons = {
-	Frame: require("../../assets/icons/settings/frame.png"),
-	Profile: require("../../assets/icons/settings/profile.png"),
-	Password: require("../../assets/icons/settings/password.png"),
-	History: require("../../assets/icons/settings/history.png"),
-	Export: require("../../assets/icons/settings/export.png"),
-	Wallet: require("../../assets/icons/settings/wallet.png"),
-	Language: require("../../assets/icons/settings/language.png"),
-	Logout: require("../../assets/icons/settings/logout.png"),
+	cart: require("@/assets/icons/cart.png"),
 };
 
-export default function User() {
-	const menus = [
-		{
-			icon: icons.Profile,
-			text: "Thông tin cá nhân",
-		},
-		{
-			icon: icons.Password,
-			text: "Đổi mật khẩu",
-		},
-		{
-			icon: icons.History,
-			text: "Lịch sử giao dịch",
-		},
-		{
-			icon: icons.Export,
-			text: "Đăng, bán tài khoản",
-		},
-		{
-			icon: icons.Wallet,
-			text: "Liên kết ngân hàng",
-		},
-		{
-			icon: icons.Language,
-			text: "Đổi ngôn ngữ",
-		},
-		{
-			icon: icons.Logout,
-			text: "Đăng xuất",
-		},
-	];
-
+export default function Document() {
 	return (
-		<View
-			style={{
-				flex: 1,
-				backgroundColor: colors["lol-black"],
-				position: "relative",
-			}}
-		>
+		<View style={styles.container}>
 			<Background />
-			<View
-				style={{
-					gap: 24,
-					padding: 24,
-				}}
-			>
-				<Image source={icons.Frame} style={styles.frame} />
-				<Text style={styles.name}>Tên: Nam Nguyen</Text>
-				<Text style={styles.name}>ID: 12</Text>
-				<View style={styles.cardContainer}>
-					{menus.map((item, index) => (
-						<View style={styles.cardItem} key={item.text}>
-							<Image source={item.icon} style={styles.icon} />
-							<Text style={styles.cardText}>{item.text}</Text>
+			<StatusBar barStyle="light-content" />
+			<ScrollView style={styles.scrollView}>
+				<View>
+					<View style={styles.header}>
+						<Image source={icons.cart} style={styles.icon} />
+					</View>
+
+					<Inputs />
+					<View>
+						<View style={listViewStyles.dividerContainer}>
+							<View style={listViewStyles.divider} />
+							<Text style={listViewStyles.dividerText}>Bài đã đăng</Text>
+							<View style={listViewStyles.divider} />
 						</View>
-					))}
+						<ListView />
+					</View>
 				</View>
-			</View>
+			</ScrollView>
 		</View>
 	);
 }
 
 const styles = StyleSheet.create({
-	frame: {
-		width: 180,
-		height: 180,
-		marginHorizontal: "auto",
-		marginTop: 40,
+	scrollView: {
+		flex: 1,
 	},
-	name: {
-		color: colors["lol-gold"],
-		fontSize: 20,
-		fontWeight: "bold",
-		textAlign: "center",
+	container: {
+		flex: 1,
+		paddingTop: 24,
 	},
-	cardContainer: {
-		backgroundColor: "#ffffff30",
-		borderWidth: 1,
-		borderColor: colors["lol-gold"],
-		padding: 20,
-		gap: 20,
-		borderRadius: 20,
-	},
-	cardItem: {
+	header: {
 		flexDirection: "row",
+		justifyContent: "flex-end",
 		alignItems: "center",
-		gap: 10,
+		padding: 16,
 	},
 	icon: {
 		width: 36,
 		height: 36,
 	},
-	cardText: {
-		color: colors["lol-gold"],
-		fontSize: 20,
+});
+
+const listViewStyles = StyleSheet.create({
+	container: {
+		flex: 1,
+		paddingHorizontal: 16,
+	},
+	dividerContainer: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 10,
+		padding: 16,
+	},
+	divider: {
+		height: 1,
+		backgroundColor: "#9F9168",
+		flex: 1,
+	},
+	dividerText: {
+		color: "#CABB8E",
+		fontSize: 16,
+		fontWeight: "bold",
 		textAlign: "center",
 	},
 });

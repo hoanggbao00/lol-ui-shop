@@ -1,5 +1,4 @@
 import { Stack } from "expo-router";
-import { StatusBar } from 'react-native';
 
 export default function RootLayout() {
 	return (
@@ -8,9 +7,8 @@ export default function RootLayout() {
 				headerShown: false,
 			}}
 		>
-			<StatusBar barStyle="light-content" />
-
 			<Stack.Screen name="signin" />
+			<Stack.Screen name="signup" />
 			<Stack.Screen name="(tabs)" />
 		</Stack>
 	);
