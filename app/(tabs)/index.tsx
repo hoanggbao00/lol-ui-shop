@@ -1,8 +1,8 @@
 import Background from "@/components/Background";
 import Filter from "@/components/home/Filter";
-import ListView from '@/components/home/ListView';
+import ListView from "@/components/home/ListView";
 import { Image } from "expo-image";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StatusBar, StyleSheet, View } from "react-native";
 
 const icons = {
 	cart: require("@/assets/icons/cart.png"),
@@ -10,28 +10,30 @@ const icons = {
 
 export default function Index() {
 	return (
-    <ScrollView style={styles.scrollView}>
-		<View style={styles.container}>
-			<Background />
-			<View style={styles.header}>
-				<Image source={icons.cart} style={styles.icon} />
+		<ScrollView style={styles.scrollView}>
+			<StatusBar barStyle="light-content" />
+
+			<View style={styles.container}>
+				<Background />
+				<View style={styles.header}>
+					<Image source={icons.cart} style={styles.icon} />
+				</View>
+				<Filter />
+				<ListView />
 			</View>
-			<Filter />
-      <ListView />
-		</View>
-    </ScrollView>
+		</ScrollView>
 	);
 }
 
 const styles = StyleSheet.create({
-  scrollView: {
-    flex: 1,
-  },
+	scrollView: {
+		flex: 1,
+	},
 	container: {
 		flex: 1,
 		position: "relative",
-    gap: 24,
-    paddingTop: 24,
+		gap: 24,
+		paddingTop: 24,
 	},
 	header: {
 		flexDirection: "row",

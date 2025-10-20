@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { Tabs } from "expo-router";
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { StatusBar, StyleSheet, View } from "react-native";
 import Svg, { Mask, Path } from "react-native-svg";
 
 const icons = {
@@ -101,6 +101,8 @@ export default function TabLayout() {
         tabBarBackground: () => <CustomTabBarBackground />,
       }}
     >
+			<StatusBar barStyle="light-content" />
+
       <Tabs.Screen
         name="index"
         options={{
