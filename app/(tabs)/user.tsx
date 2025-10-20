@@ -1,6 +1,7 @@
+import Background from '@/components/Background';
 import { colors } from "@/libs/colors";
 import { Image } from "expo-image";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 
 const icons = {
   Frame: require("../../assets/icons/settings/frame.png"),
@@ -50,11 +51,13 @@ export default function User() {
     style={{
       flex: 1,
       backgroundColor: colors["lol-black"],
-      padding: 24,
     }}
     >
+      <StatusBar barStyle='light-content' />
+      <Background />
       <View style={{
         gap: 24,
+        padding: 24,
       }}>
         <Image source={icons.Frame} style={styles.frame} />
         <Text style={styles.name}>Tên: Nam Nguyen</Text>
@@ -106,5 +109,5 @@ const styles = StyleSheet.create({
     color: colors["lol-gold"],
     fontSize: 20,
     textAlign: "center",
-  },
+  }
 });

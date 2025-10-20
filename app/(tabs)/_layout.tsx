@@ -11,8 +11,13 @@ const icons = {
   User: require("@/assets/icons/user.png"),
 };
 
+type TabBarIconProps = {
+  color?: string;
+  focused: boolean;
+};
+
 // Custom SVG Icon Components for React Native
-const HomeIcon = ({ color, focused }) => (
+const HomeIcon = ({ focused }: TabBarIconProps) => (
   <View style={focused && styles.activeIconContainer}>
     {focused && <View style={styles.activeCircle} />}
     {focused && <View style={styles.activeCircle2} />}
@@ -20,7 +25,7 @@ const HomeIcon = ({ color, focused }) => (
   </View>
 );
 
-const BookIcon = ({ color, focused }) => (
+const BookIcon = ({ focused }: TabBarIconProps) => (
   <View style={focused && styles.activeIconContainer}>
     {focused && <View style={styles.activeCircle} />}
     {focused && <View style={styles.activeCircle2} />}
@@ -28,7 +33,7 @@ const BookIcon = ({ color, focused }) => (
   </View>
 );
 
-const DocumentIcon = ({ color, focused }) => (
+const DocumentIcon = ({ focused }: TabBarIconProps) => (
   <View style={focused && styles.activeIconContainer}>
     {focused && <View style={styles.activeCircle} />}
     {focused && <View style={styles.activeCircle2} />}
@@ -36,7 +41,7 @@ const DocumentIcon = ({ color, focused }) => (
   </View>
 );
 
-const UserIcon = ({ color, focused }) => (
+const UserIcon = ({ focused }: TabBarIconProps) => (
   <View style={focused && styles.activeIconContainer}>
     {focused && <View style={styles.activeCircle} />}
     {focused && <View style={styles.activeCircle2} />}
@@ -100,8 +105,8 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, focused }) => (
-            <HomeIcon color={color} focused={focused} />
+          tabBarIcon: ({ focused }) => (
+            <HomeIcon focused={focused} />
           ),
         }}
       />
@@ -109,8 +114,8 @@ export default function TabLayout() {
         name="book"
         options={{
           title: "Book",
-          tabBarIcon: ({ color, focused }) => (
-            <BookIcon color={color} focused={focused} />
+          tabBarIcon: ({ focused }) => (
+            <BookIcon focused={focused} />
           ),
         }}
       />
@@ -118,8 +123,8 @@ export default function TabLayout() {
         name="document"
         options={{
           title: "Document",
-          tabBarIcon: ({ color, focused }) => (
-            <DocumentIcon color={color} focused={focused} />
+          tabBarIcon: ({ focused }) => (
+            <DocumentIcon focused={focused} />
           ),
         }}
       />
@@ -127,8 +132,8 @@ export default function TabLayout() {
         name="user"
         options={{
           title: "User",
-          tabBarIcon: ({ color, focused }) => (
-            <UserIcon color={color} focused={focused} />
+          tabBarIcon: ({ focused }) => (
+            <UserIcon focused={focused} />
           ),
         }}
       />

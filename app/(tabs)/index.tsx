@@ -1,4 +1,7 @@
+import { ImageBackground } from 'expo-image';
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+
+const backgroundImage = require("@/assets/images/app/background.png");
 
 export default function Index() {
 
@@ -6,8 +9,22 @@ export default function Index() {
     <ScrollView
     style={{
       flex: 1,
+      position: "relative",
     }}
     >
+      <ImageBackground 
+      source={backgroundImage}
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+      }}
+      imageStyle={{
+        opacity: 0.6,
+      }}
+      />
       <View style={{
         padding: 24,
         gap: 24,
