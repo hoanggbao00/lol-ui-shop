@@ -1,11 +1,33 @@
-import React from "react";
+import { Image } from 'expo-image';
+import * as ImagePicker from "expo-image-picker";
+import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
+
 export default function SelectImage() {
+	const [selectedImage, setSelectedImage] = useState<string | undefined>(
+		undefined,
+	);
+
+	const pickImageAsync = async () => {
+		const result = await ImagePicker.launchImageLibraryAsync({
+			mediaTypes: ["images"],
+			allowsEditing: true,
+			quality: 1,
+		});
+
+		if (!result.canceled) {
+			setSelectedImage(result.assets[0].uri);
+		} else {
+			alert("You did not select any image.");
+		}
+	};
+
 	return (
 		<View style={[selectImageStyles.item, selectImageStyles.item2]}>
-			<TouchableOpacity style={selectImageStyles.button}>
-				<Text style={selectImageStyles.buttonText}>Chọn ảnh</Text>
+			<TouchableOpacity style={selectImageStyles.button} onPress={pickImageAsync}>
+				{!selectedImage && <Text style={selectImageStyles.buttonText}>Chọn ảnh</Text>}
+        {selectedImage && <Image source={{ uri: selectedImage }} style={{ width: '100%', height: '100%' }} />}
 			</TouchableOpacity>
 
 			<View>
