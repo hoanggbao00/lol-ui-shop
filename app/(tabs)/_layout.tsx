@@ -140,8 +140,9 @@ const styles = StyleSheet.create({
   tabBar: {
     height: 80,
     paddingTop: 23,
+    shadowColor: "transparent",
     position: "absolute",
-    shadowColor: "none",
+    borderTopColor: 'transparent',
   },
   activeIconContainer: {
     position: "relative",
