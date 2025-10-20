@@ -1,34 +1,22 @@
-import { ImageBackground } from 'expo-image';
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
-
-const backgroundImage = require("@/assets/images/app/background.png");
+import Background from '@/components/Background';
+import { Text, TouchableOpacity, View } from "react-native";
 
 export default function Index() {
 
   return (
-    <ScrollView
+    <View
     style={{
       flex: 1,
       position: "relative",
     }}
     >
-      <ImageBackground 
-      source={backgroundImage}
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-      }}
-      imageStyle={{
-        opacity: 0.6,
-      }}
-      />
+      <Background />
       <View style={{
         padding: 24,
         gap: 24,
+        position: "relative",
       }}>
+        
         {/* Card component */}
         <View>
           <View>
@@ -46,10 +34,10 @@ export default function Index() {
           </View>
           <View className="gap-3 mt-4">
             <TouchableOpacity onPress={() => console.log('Browse pressed')}>
-              Browse Shop
+              <Text>Browse Shop</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => console.log('View account pressed')}>
-              My Account
+              <Text>My Account</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -96,6 +84,6 @@ export default function Index() {
           </View>
         </View>
       </View>
-    </ScrollView>
+    </View>
   );
 }

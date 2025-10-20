@@ -9,7 +9,6 @@ export default function Background() {
 		<ImageBackground
 			source={backgroundImage}
 			style={styles.backgroundImage}
-			imageStyle={styles.backgroundImageStyle}
 		/>
 	);
 }
@@ -18,9 +17,5 @@ const styles = StyleSheet.create({
 	backgroundImage: {
 		position: "absolute",
 		inset: 0,
-	},
-	backgroundImageStyle: {
-		opacity: 1,
-		transform: [{ scale: 1.3 }],
-	},
+	}
 });

@@ -1,11 +1,11 @@
+import Background from '@/components/Background';
 import { Link, router } from "expo-router";
 import React, { useState } from "react";
 import {
-  ImageBackground,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
 export default function SignIn() {
@@ -20,16 +20,10 @@ export default function SignIn() {
     <View style={{
       flex: 1,
     }}>
-    <ImageBackground
-      source={require("../assets/images/splash-icon.png")}
-      imageStyle={{ opacity: 0.6 }}
-      style={{
-        flex: 1,
-      }}
-    >
+			<Background />
+
       <View style={{
         flex: 1,
-        backgroundColor: "rgba(0, 0, 0, 0.7)",
         alignItems: "center",
         justifyContent: "center",
         paddingHorizontal: 24,
@@ -198,7 +192,6 @@ export default function SignIn() {
           </TouchableOpacity>
         </Link>
       </View>
-    </ImageBackground>
     </View>
   );
 }
