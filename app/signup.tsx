@@ -1,5 +1,4 @@
 import { Link, router } from "expo-router";
-import { Button } from "heroui-native";
 import React, { useState } from "react";
 import {
   ImageBackground,
@@ -17,34 +16,68 @@ export default function SignIn() {
     router.push("/(tabs)");
   };
 
-  const onBackSignin = () => {
-    router.push("/signin");
-  };
-
   return (
+    <View style={{
+      flex: 1,
+    }}>
     <ImageBackground
       source={require("../assets/images/splash-icon.png")}
-      className="flex-1"
       imageStyle={{ opacity: 0.6 }}
+      style={{
+        flex: 1,
+      }}
     >
-      <View className="flex-1 bg-black/70 items-center justify-center px-6 gap-4">
+      <View style={{
+        flex: 1,
+        backgroundColor: "rgba(0, 0, 0, 0.7)",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 24,
+        gap: 16,
+      }}>
         {/* Username/Email field */}
-        <View className="w-full bg-white/20 rounded-md p-2 border-lol-gold border">
-          <Text className="text-[#A0ADB5]">
+        <View style={{
+          width: "100%",
+          backgroundColor: "rgba(255, 255, 255, 0.2)",
+          borderRadius: 8,
+          padding: 8,
+          borderColor: "#C8AA6E",
+          borderWidth: 1,
+        }}>
+          <Text style={{
+            color: "#A0ADB5",
+          }}>
             Tên người dùng, email/số di động
           </Text>
           <TextInput
-            className="w-full h-10"
+            style={{
+              width: "100%",
+              height: 40,
+            }}
             value={username}
             onChangeText={setUsername}
             placeholder="Tên người dùng, email/số di động"
           />
         </View>
 
-        <View className="w-full bg-white/20 rounded-md p-2 border-lol-gold border">
-          <Text className="text-[#A0ADB5]">Mật khẩu</Text>
+        <View style={{
+          width: "100%",
+          backgroundColor: "rgba(255, 255, 255, 0.2)",
+          borderRadius: 8,
+          padding: 8,
+          borderColor: "#C8AA6E",
+          borderWidth: 1,
+        }}>
+          <Text style={{
+            color: "#A0ADB5",
+          }}>
+            Mật khẩu
+          </Text>
           <TextInput
-            className="w-full h-10"
+            style={{
+              width: "100%",
+              height: 40,
+            }}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -52,10 +85,24 @@ export default function SignIn() {
           />
         </View>
 
-        <View className="w-full bg-white/20 rounded-md p-2 border-lol-gold border">
-          <Text className="text-[#A0ADB5]">Nhập lại mật khẩu</Text>
+        <View style={{
+          width: "100%",
+          backgroundColor: "rgba(255, 255, 255, 0.2)",
+          borderRadius: 8,
+          padding: 8,
+          borderColor: "#C8AA6E",
+          borderWidth: 1,
+        }}>
+          <Text style={{
+            color: "#A0ADB5",
+          }}>
+            Nhập lại mật khẩu
+          </Text>
           <TextInput
-            className="w-full h-10"
+            style={{
+              width: "100%",
+              height: 40,
+            }}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -65,46 +112,93 @@ export default function SignIn() {
 
         {/* Login button */}
 
-        <Button
-          onPress={onBackSignin}
-          className="h-14 rounded-full w-full bg-lol-gold/50 border border-lol-gold"
+        <TouchableOpacity
+          onPress={onPress}
+          style={{
+            height: 56,
+            width: "100%",
+            backgroundColor: "rgba(196, 170, 110, 0.5)",
+            borderRadius: 8,
+            borderColor: "#C8AA6E",
+            borderWidth: 1,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
         >
-          <Text className="text-black text-lg font-bold">Đăng ký</Text>
-        </Button>
-
-        {/* Forgot password link */}
-        <TouchableOpacity className="mb-8">
-          <Text className="text-[#FFF3E5] text-lg font-bold">
-            Quên mật khẩu?
+          <Text style={{
+            color: "#000000",
+            fontSize: 16,
+            fontWeight: "bold",
+            textAlign: "center",
+          }}>
+            Đăng ký
           </Text>
         </TouchableOpacity>
 
         {/* Social login options */}
-        <View className="flex-row justify-center mb-8 gap-4">
+        <View style={{
+          flexDirection: "row",
+          justifyContent: "center",
+          marginBottom: 32,
+          gap: 16,
+        }}>
           <TouchableOpacity
-            className="w-14 h-14 items-center justify-center"
+            style={{
+              width: 56,
+              height: 56,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
             onPress={onPress}
           >
-            <Text className="text-lol-gold text-4xl font-bold">f</Text>
+            <Text style={{
+              color: "#C8AA6E",
+              fontSize: 48,
+              fontWeight: "bold",
+            }}>f</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            className="w-14 h-14 items-center justify-center"
+            style={{
+              width: 56,
+              height: 56,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
             onPress={onPress}
           >
-            <Text className="text-lol-gold text-4xl font-bold">G</Text>
+            <Text style={{
+              color: "#C8AA6E",
+              fontSize: 48,
+              fontWeight: "bold",
+            }}>G</Text>
           </TouchableOpacity>
         </View>
 
         {/* Create new account link */}
         <Link href="/signin" asChild>
-          <Button className="h-14 rounded-xl w-full !bg-transparent border-lol-gold border-2">
-            <Text className="text-lol-gold text-lg font-bold">
+          <TouchableOpacity style={{
+            height: 56,
+            width: "100%",
+            backgroundColor: "transparent",
+            borderColor: "#C8AA6E",
+            borderWidth: 2,
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 8,
+          }}>
+            <Text style={{
+              color: "#C8AA6E",
+              fontSize: 16,
+              fontWeight: "bold",
+              textAlign: "center",
+            }}>
               Đã có tài khoản
             </Text>
-          </Button>
+          </TouchableOpacity>
         </Link>
       </View>
     </ImageBackground>
+    </View>
   );
 }

@@ -46,14 +46,22 @@ export default function User() {
   ];
 
   return (
-    <ScrollView className="flex-1 relative bg-black">
-      <View className="p-6 gap-6">
+    <ScrollView
+    style={{
+      flex: 1,
+      backgroundColor: colors["lol-black"],
+      padding: 24,
+    }}
+    >
+      <View style={{
+        gap: 24,
+      }}>
         <Image source={icons.Frame} style={styles.frame} />
         <Text style={styles.name}>Tên: Nam Nguyen</Text>
         <Text style={styles.name}>ID: 12</Text>
         <View style={styles.cardContainer}>
           {menus.map((item, index) => (
-            <View style={styles.cardItem} key={index}>
+            <View style={styles.cardItem} key={item.text}>
               <Image source={item.icon} style={styles.icon} />
               <Text style={styles.cardText}>{item.text}</Text>
             </View>

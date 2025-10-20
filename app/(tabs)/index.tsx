@@ -1,84 +1,83 @@
-import { Button, Card, Chip, useTheme } from "heroui-native";
-import { ScrollView, View } from "react-native";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 export default function Index() {
-  const { isDark } = useTheme();
 
   return (
-    <ScrollView className="flex-1 bg-background">
-      <View className="p-6 gap-6">
+    <ScrollView
+    style={{
+      flex: 1,
+    }}
+    >
+      <View style={{
+        padding: 24,
+        gap: 24,
+      }}>
         {/* Card component */}
-        <Card>
-          <Card.Header>
-            <Card.Title>Welcome to League of Legends Shop</Card.Title>
-            <Card.Description>
+        <View>
+          <View>
+            <Text>Welcome to League of Legends Shop</Text>
+            <Text>
               Browse and purchase your favorite champions and skins
-            </Card.Description>
-          </Card.Header>
-          <Card.Body className="gap-4">
-            <View className="flex-row gap-2">
-              <Chip variant="primary" color="accent">New</Chip>
-              <Chip variant="secondary" color="success">Featured</Chip>
-              <Chip variant="tertiary" color="warning">Sale</Chip>
-            </View>
-          </Card.Body>
-          <Card.Footer className="gap-3 mt-4">
-            <Button variant="primary" onPress={() => console.log('Browse pressed')}>
-              Browse Shop
-            </Button>
-            <Button variant="ghost" onPress={() => console.log('View account pressed')}>
-              My Account
-            </Button>
-          </Card.Footer>
-        </Card>
-
-        <Card surfaceVariant="2" className="rounded-xl">
-          <View className="gap-4">
-            <Card.Header>
-              <View className="bg-accent rounded-full w-12 h-12 items-center justify-center">
-                <Card.Title className="text-accent-foreground">RP</Card.Title>
-              </View>
-            </Card.Header>
-            <Card.Body>
-              <Card.Title>Riot Points</Card.Title>
-              <Card.Description className="mb-4">
-                Purchase Riot Points to buy champions, skins, and more.
-              </Card.Description>
-            </Card.Body>
-            <Card.Footer>
-              <Button variant="primary" onPress={() => console.log('Buy RP pressed')}>
-                Buy RP
-              </Button>
-            </Card.Footer>
+            </Text>
           </View>
-        </Card>
-
-        <Card>
-          <Card.Header>
-            <Card.Title>Daily Deals</Card.Title>
-            <Card.Description>
-              Special offers refreshed daily
-            </Card.Description>
-          </Card.Header>
-          <Card.Body className="gap-4 mt-2">
-            <View className="flex-row flex-wrap gap-2">
-              <Chip size="sm" variant="secondary" color="danger">
-                <Chip.Label>50% OFF</Chip.Label>
-              </Chip>
-              <Chip size="sm" variant="secondary" color="accent">
-                <Chip.Label>Limited Time</Chip.Label>
-              </Chip>
-              <Chip size="sm" variant="secondary" color="success">
-                <Chip.Label>Exclusive</Chip.Label>
-              </Chip>
+          <View className="gap-4">
+            <View className="flex-row gap-2">
+              <Text>New</Text>
+              <Text>Featured</Text>
+              <Text>Sale</Text>
             </View>
-          </Card.Body>
-          <Card.Footer className="mt-4">
-            <Button variant="secondary" onPress={() => console.log('View deals pressed')}>
-              View Deals
-            </Button>
-          </Card.Footer>
-        </Card>
+          </View>
+          <View className="gap-3 mt-4">
+            <TouchableOpacity onPress={() => console.log('Browse pressed')}>
+              Browse Shop
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => console.log('View account pressed')}>
+              My Account
+            </TouchableOpacity>
+          </View>
+        </View>
+
+          <View className="rounded-xl">
+          <View className="gap-4">
+            <View>
+              <View className="bg-accent rounded-full w-12 h-12 items-center justify-center">
+                <Text className="text-accent-foreground">RP</Text>
+              </View>
+            </View>
+            <View>
+              <Text>Riot Points</Text>
+              <Text className="mb-4">
+                Purchase Riot Points to buy champions, skins, and more.
+              </Text>
+            </View>
+            <View>
+              <TouchableOpacity onPress={() => console.log('Buy RP pressed')}>
+                <Text>Buy RP</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        <View>
+          <View>
+            <Text>Daily Deals</Text>
+            <Text>
+              Special offers refreshed daily
+            </Text>
+          </View>
+          <View className="gap-4 mt-2">
+            <View className="flex-row flex-wrap gap-2">
+              <Text>50% OFF</Text>
+              <Text>Limited Time</Text>
+              <Text>Exclusive</Text>
+            </View>
+          </View>
+          <View className="mt-4">
+            <TouchableOpacity onPress={() => console.log('View deals pressed')}>
+              <Text>View Deals</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
     </ScrollView>
   );
