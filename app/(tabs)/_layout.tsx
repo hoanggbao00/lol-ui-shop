@@ -50,7 +50,7 @@ const CustomTabBarBackground = () => (
     style={{
       position: "absolute",
       top: -55,
-      left: -295,
+      left: -291,
       transform: "scale(0.4)",
     }}
   >
