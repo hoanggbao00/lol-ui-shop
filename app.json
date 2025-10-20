@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "ui-lol-shop",
+    "name": "UI LOL Shop",
     "slug": "ui-lol-shop",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,6 +12,8 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.ui.lolshop",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -43,6 +45,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a854d9e8-81d0-477e-9ef1-84b813ea5f86"
+      }
     }
   }
 }
