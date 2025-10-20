@@ -1,89 +1,46 @@
-import Background from '@/components/Background';
-import { Text, TouchableOpacity, View } from "react-native";
+import Background from "@/components/Background";
+import Filter from "@/components/home/Filter";
+import ListView from '@/components/home/ListView';
+import { Image } from "expo-image";
+import { ScrollView, StyleSheet, View } from "react-native";
+
+const icons = {
+	cart: require("@/assets/icons/cart.png"),
+};
 
 export default function Index() {
-
-  return (
-    <View
-    style={{
-      flex: 1,
-      position: "relative",
-    }}
-    >
-      <Background />
-      <View style={{
-        padding: 24,
-        gap: 24,
-        position: "relative",
-      }}>
-        
-        {/* Card component */}
-        <View>
-          <View>
-            <Text>Welcome to League of Legends Shop</Text>
-            <Text>
-              Browse and purchase your favorite champions and skins
-            </Text>
-          </View>
-          <View className="gap-4">
-            <View className="flex-row gap-2">
-              <Text>New</Text>
-              <Text>Featured</Text>
-              <Text>Sale</Text>
-            </View>
-          </View>
-          <View className="gap-3 mt-4">
-            <TouchableOpacity onPress={() => console.log('Browse pressed')}>
-              <Text>Browse Shop</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => console.log('View account pressed')}>
-              <Text>My Account</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-          <View className="rounded-xl">
-          <View className="gap-4">
-            <View>
-              <View className="bg-accent rounded-full w-12 h-12 items-center justify-center">
-                <Text className="text-accent-foreground">RP</Text>
-              </View>
-            </View>
-            <View>
-              <Text>Riot Points</Text>
-              <Text className="mb-4">
-                Purchase Riot Points to buy champions, skins, and more.
-              </Text>
-            </View>
-            <View>
-              <TouchableOpacity onPress={() => console.log('Buy RP pressed')}>
-                <Text>Buy RP</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        <View>
-          <View>
-            <Text>Daily Deals</Text>
-            <Text>
-              Special offers refreshed daily
-            </Text>
-          </View>
-          <View className="gap-4 mt-2">
-            <View className="flex-row flex-wrap gap-2">
-              <Text>50% OFF</Text>
-              <Text>Limited Time</Text>
-              <Text>Exclusive</Text>
-            </View>
-          </View>
-          <View className="mt-4">
-            <TouchableOpacity onPress={() => console.log('View deals pressed')}>
-              <Text>View Deals</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </View>
-  );
+	return (
+    <ScrollView style={styles.scrollView}>
+		<View style={styles.container}>
+			<Background />
+			<View style={styles.header}>
+				<Image source={icons.cart} style={styles.icon} />
+			</View>
+			<Filter />
+      <ListView />
+		</View>
+    </ScrollView>
+	);
 }
+
+const styles = StyleSheet.create({
+  scrollView: {
+    flex: 1,
+  },
+	container: {
+		flex: 1,
+		position: "relative",
+    gap: 24,
+    paddingTop: 24,
+	},
+	header: {
+		flexDirection: "row",
+		justifyContent: "flex-end",
+		alignItems: "center",
+		padding: 16,
+	},
+	icon: {
+		width: 36,
+		height: 36,
+	},
+});

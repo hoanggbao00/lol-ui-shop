@@ -122,7 +122,6 @@ export default function User() {
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		backgroundColor: colors["lol-black"],
 		position: "relative",
 		paddingTop: 24,
 	},
