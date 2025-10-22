@@ -1,6 +1,7 @@
 import { colors } from "@/libs/colors";
 import type { Item } from "@/types/items";
 import { Image } from "expo-image";
+import { router } from 'expo-router';
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import BuyNowButton from "./BuyNowButton";
@@ -18,6 +19,11 @@ export default function ListItem(props: ListItemProps) {
 			currency: "VND",
 		});
 	};
+
+	const handlePress = () => {
+		router.push("/detail-acc");
+	};
+
 	return (
 		<View style={styles.container}>
 			<View style={styles.imageContainer}>
@@ -42,7 +48,7 @@ export default function ListItem(props: ListItemProps) {
 						</View>
 					</View>
 				</View>
-				<BuyNowButton />
+				<BuyNowButton onPress={handlePress} />
 			</View>
 		</View>
 	);

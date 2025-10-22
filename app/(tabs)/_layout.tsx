@@ -111,6 +111,7 @@ const styles = StyleSheet.create({
     shadowColor: "transparent",
     position: "absolute",
     borderTopColor: 'transparent',
+    backgroundColor: "black",
   },
   activeIconContainer: {
     position: "relative",
