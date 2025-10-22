@@ -4,12 +4,13 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import React, { useEffect, useState } from "react";
 import {
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+	Modal,
+	Pressable,
+	StyleSheet,
+	Text,
+	ToastAndroid,
+	TouchableOpacity,
+	View,
 } from "react-native";
 
 interface ModalQRProps {
@@ -18,8 +19,13 @@ interface ModalQRProps {
 
 export default function ModalQR(props: ModalQRProps) {
 	const [qrUrl, setQrUrl] = useState("");
-
-	const soDu = 1000000;
+	const [soDu, setSoDu] = useState(() => {
+		const random = Math.random();
+		if (random > 0.5) {
+			return 1000000;
+		}
+		return 0;
+	});
 
 	const handleGenerateQR = () => {
 		// Docs https://qr.sepay.vn/
@@ -30,6 +36,24 @@ export default function ModalQR(props: ModalQRProps) {
 		url.searchParams.set("amount", "50000"); // Giá tiền
 		url.searchParams.set("des", "ui lol shop"); // Nội dung
 		setQrUrl(url.toString());
+	};
+
+	const handleCheckPayment = () => {
+		const random = Math.random();
+		if (random > 0.5) {
+			ToastAndroid.show("Thanh toán thành công", ToastAndroid.SHORT);
+		} else {
+			ToastAndroid.show("Bạn chưa thanh toán", ToastAndroid.SHORT);
+		}
+	};
+
+	const handlePayWithBalance = () => {
+		if(soDu < 50000) {
+			ToastAndroid.show("Số dư của bạn không đủ", ToastAndroid.SHORT);
+			return;
+		}
+		setSoDu(soDu - 50000);
+		ToastAndroid.show("Thanh toán bằng số dư thành công", ToastAndroid.SHORT);
 	};
 
 	useEffect(() => {
@@ -48,7 +72,7 @@ export default function ModalQR(props: ModalQRProps) {
 					<View style={styles.titleContainer}>
 						<Text style={styles.title}>Thanh toán</Text>
 						<View style={styles.closeButtonContainer}>
-              <Text style={styles.soDuText}>Số dư: {formatPrice(soDu)}</Text>
+							<Text style={styles.soDuText}>Số dư: {formatPrice(soDu)}</Text>
 							<Pressable onPress={props.onClose}>
 								<Ionicons name="close" color="#fff" size={22} />
 							</Pressable>
@@ -75,10 +99,10 @@ export default function ModalQR(props: ModalQRProps) {
 						</View>
 
 						<View style={styles.buttonContainer}>
-							<TouchableOpacity style={styles.button}>
+							<TouchableOpacity style={styles.button} onPress={handlePayWithBalance}>
 								<Text style={styles.buttonText}>Thanh toán bằng số dư</Text>
 							</TouchableOpacity>
-							<TouchableOpacity style={styles.button}>
+							<TouchableOpacity style={styles.button} onPress={handleCheckPayment}>
 								<Text style={styles.buttonText}>Kiểm tra chuyển khoản</Text>
 							</TouchableOpacity>
 						</View>
@@ -102,12 +126,12 @@ const styles = StyleSheet.create({
 	closeButtonContainer: {
 		flexDirection: "row",
 		gap: 4,
-    alignItems: "center",
+		alignItems: "center",
 	},
-  soDuText: {
-    color: colors["lol-gold"],
-    fontSize: 12,
-  },
+	soDuText: {
+		color: colors["lol-gold"],
+		fontSize: 12,
+	},
 	titleContainer: {
 		height: "10%",
 		backgroundColor: "#464C55",
