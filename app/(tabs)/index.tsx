@@ -1,7 +1,10 @@
 import Background from "@/components/Background";
 import Filter from "@/components/home/Filter";
 import ListView from "@/components/home/ListView";
+import { mockData } from "@/libs/mock-data";
+import type { Item } from "@/types/items";
 import { Image } from "expo-image";
+import { useState } from "react";
 import { ScrollView, StatusBar, StyleSheet, View } from "react-native";
 
 const icons = {
@@ -9,6 +12,8 @@ const icons = {
 };
 
 export default function Index() {
+	const [data, setData] = useState<Item[]>(mockData);
+
 	return (
 		<ScrollView style={styles.scrollView}>
 			<StatusBar barStyle="light-content" />
@@ -19,7 +24,7 @@ export default function Index() {
 					<Image source={icons.cart} style={styles.icon} />
 				</View>
 				<Filter />
-				<ListView />
+				<ListView data={data} />
 			</View>
 		</ScrollView>
 	);

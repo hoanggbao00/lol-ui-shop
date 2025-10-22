@@ -1,14 +1,17 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from "expo-image-picker";
-import React, { useState } from "react";
+import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 
-export default function SelectImage() {
-	const [selectedImage, setSelectedImage] = useState<string | undefined>(
-		undefined,
-	);
+interface SelectImageProps {
+	onImageSelected: (image: string) => void;
+	image: string | undefined;
+	onAddItem: () => void;
+}
 
+export default function SelectImage(props: SelectImageProps) {
+	const { onImageSelected, image } = props;
 	const pickImageAsync = async () => {
 		const result = await ImagePicker.launchImageLibraryAsync({
 			mediaTypes: ["images"],
@@ -17,7 +20,7 @@ export default function SelectImage() {
 		});
 
 		if (!result.canceled) {
-			setSelectedImage(result.assets[0].uri);
+			onImageSelected(result.assets[0].uri);
 		} else {
 			alert("You did not select any image.");
 		}
@@ -26,11 +29,11 @@ export default function SelectImage() {
 	return (
 		<View style={[selectImageStyles.item, selectImageStyles.item2]}>
 			<TouchableOpacity style={selectImageStyles.button} onPress={pickImageAsync}>
-				{!selectedImage && <Text style={selectImageStyles.buttonText}>Chọn ảnh</Text>}
-        {selectedImage && <Image source={{ uri: selectedImage }} style={{ width: '100%', height: '100%' }} />}
+				{!image && <Text style={selectImageStyles.buttonText}>Chọn ảnh</Text>}
+        {image && <Image source={{ uri: image }} style={{ width: '100%', height: '100%' }} />}
 			</TouchableOpacity>
 
-			<View>
+			<TouchableOpacity onPress={props.onAddItem}>
 				<Svg
 					width="413"
 					height="128"
@@ -55,7 +58,7 @@ export default function SelectImage() {
 				</Svg>
 
 				<Text style={selectImageStyles.svgText}>Đăng bài</Text>
-			</View>
+			</TouchableOpacity>
 		</View>
 	);
 }

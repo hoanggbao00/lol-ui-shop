@@ -1,7 +1,10 @@
 import Background from "@/components/Background";
-import Inputs from '@/components/document/Inputs';
+import Inputs from "@/components/document/Inputs";
 import ListView from "@/components/home/ListView";
+import { mockData } from "@/libs/mock-data";
+import type { Item } from "@/types/items";
 import { Image } from "expo-image";
+import { useState } from "react";
 import { ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
 
 const icons = {
@@ -9,6 +12,12 @@ const icons = {
 };
 
 export default function Document() {
+	const [data, setData] = useState<Item[]>(mockData);
+
+	const handleAddItem = (item: Item) => {
+		setData([item,...data]);
+	};
+
 	return (
 		<View style={styles.container}>
 			<Background />
@@ -19,14 +28,14 @@ export default function Document() {
 						<Image source={icons.cart} style={styles.icon} />
 					</View>
 
-					<Inputs />
+					<Inputs onAddItem={handleAddItem} />
 					<View>
 						<View style={listViewStyles.dividerContainer}>
 							<View style={listViewStyles.divider} />
 							<Text style={listViewStyles.dividerText}>Bài đã đăng</Text>
 							<View style={listViewStyles.divider} />
 						</View>
-						<ListView />
+						<ListView data={data} />
 					</View>
 				</View>
 			</ScrollView>

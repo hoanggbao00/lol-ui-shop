@@ -1,23 +1,77 @@
-import React from "react";
-import {
-  StyleSheet,
-  TextInput,
-  View,
-} from "react-native";
+import React, { useState } from "react";
+import { StyleSheet, TextInput, View } from "react-native";
 
-import SelectImage from './SelectImage';
+import type { Item } from "@/types/items";
+import SelectImage from "./SelectImage";
 
-export default function Inputs() {
+interface InputsProps {
+	onAddItem: (item: Item) => void;
+}
+
+export default function Inputs(props: InputsProps) {
+	const [name, setName] = useState("");
+	const [rank, setRank] = useState("");
+	const [skin, setSkin] = useState("");
+	const [champ, setChamp] = useState("");
+	const [price, setPrice] = useState("");
+	const [image, setImage] = useState<string | undefined>(undefined);
+
+	const handleAddItem = () => {
+		if (!image || !name || !rank || !skin || !champ || !price) {
+			return alert("Vui lòng điền đầy đủ thông tin");
+		}
+
+		const item: Item = {
+			id: Math.random() * 1000000,
+			username: name,
+			price: Number.parseInt(price, 10),
+			image: { uri: image },
+			info: { rank: rank, skin: skin, champ: champ },
+		};
+
+		props.onAddItem(item);
+	};
+
 	return (
 		<View style={styles.container}>
 			<View style={[styles.item, styles.item1]}>
-				<TextInput placeholderTextColor='white' placeholder="Nhập tên & id" style={styles.input} />
-				<TextInput placeholderTextColor='white' placeholder="Nhập rank hiện tại" style={styles.input} />
-				<TextInput placeholderTextColor='white' placeholder="Nhập số skin" style={styles.input} />
-				<TextInput placeholderTextColor='white' placeholder="Nhập số tướng" style={styles.input} />
-				<TextInput placeholderTextColor='white' placeholder="Nhập giá bán" style={styles.input} />
+				<TextInput
+					placeholderTextColor="white"
+					placeholder="Nhập tên & id"
+					style={styles.input}
+					value={name}
+					onChangeText={setName}
+				/>
+				<TextInput
+					placeholderTextColor="white"
+					placeholder="Nhập rank hiện tại"
+					style={styles.input}
+					value={rank}
+					onChangeText={setRank}
+				/>
+				<TextInput
+					placeholderTextColor="white"
+					placeholder="Nhập số skin"
+					style={styles.input}
+					value={skin}
+					onChangeText={setSkin}
+				/>
+				<TextInput
+					placeholderTextColor="white"
+					placeholder="Nhập số tướng"
+					style={styles.input}
+					value={champ}
+					onChangeText={setChamp}
+				/>
+				<TextInput
+					placeholderTextColor="white"
+					placeholder="Nhập giá bán"
+					style={styles.input}
+					value={price}
+					onChangeText={setPrice}
+				/>
 			</View>
-			<SelectImage />
+			<SelectImage onImageSelected={setImage} image={image} onAddItem={handleAddItem} />
 		</View>
 	);
 }
@@ -42,6 +96,6 @@ const styles = StyleSheet.create({
 		backgroundColor: "#000B0D",
 		padding: 6,
 		color: "white",
-    textAlign: 'center',
+		textAlign: "center",
 	},
 });
