@@ -1,7 +1,7 @@
 import Background from "@/components/Background";
 import { colors } from "@/libs/colors";
 import { Image } from "expo-image";
-import { StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 const icons = {
 	Frame: require("../../assets/icons/settings/frame.png"),
@@ -47,37 +47,40 @@ export default function User() {
 	];
 
 	return (
-		<View
-			style={{
-				flex: 1,
-				backgroundColor: colors["lol-black"],
-				position: "relative",
-			}}
-		>
-			<Background />
 			<View
 				style={{
-					gap: 24,
-					padding: 24,
+					flex: 1,
+					backgroundColor: colors["lol-black"],
+					position: "relative",
 				}}
 			>
-				<Image source={icons.Frame} style={styles.frame} />
-				<Text style={styles.name}>Tên: Nam Nguyen</Text>
-				<Text style={styles.name}>ID: 12</Text>
-				<View style={styles.cardContainer}>
-					{menus.map((item, index) => (
-						<View style={styles.cardItem} key={item.text}>
-							<Image source={item.icon} style={styles.icon} />
-							<Text style={styles.cardText}>{item.text}</Text>
-						</View>
-					))}
-				</View>
+				<Background />
+				<ScrollView
+					style={{
+						gap: 24,
+						padding: 24,
+					}}
+				>
+					<Image source={icons.Frame} style={styles.frame} />
+					<Text style={styles.name}>Tên: Nam Nguyen</Text>
+					<Text style={styles.name}>ID: 12</Text>
+					<View style={styles.cardContainer}>
+						{menus.map((item, index) => (
+							<View style={styles.cardItem} key={item.text}>
+								<Image source={item.icon} style={styles.icon} />
+								<Text style={styles.cardText}>{item.text}</Text>
+							</View>
+						))}
+					</View>
+				</ScrollView>
 			</View>
-		</View>
 	);
 }
 
 const styles = StyleSheet.create({
+	scrollView: {
+		flex: 1,
+	},
 	frame: {
 		width: 180,
 		height: 180,
