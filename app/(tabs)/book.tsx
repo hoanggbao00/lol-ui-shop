@@ -1,7 +1,8 @@
 import Background from "@/components/Background";
 import { colors } from "@/libs/colors";
+import { router } from 'expo-router';
 import { useState } from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const rankImages = {
 	CaoThu: require("@/assets/images/rank/cao-thu.png"),
@@ -62,6 +63,10 @@ const mockData = [
 export default function User() {
 	const [data, setData] = useState(mockData);
 
+	const handleNavigateToCart = () => {
+		router.push("/cart");
+	};
+
 	const rows = Array.from(
 		{ length: Math.ceil(data.length / 2) },
 		(_, index) => ({
@@ -81,7 +86,9 @@ export default function User() {
 		<View style={styles.container}>
 			<Background />
 			<View style={styles.header}>
-				<Image source={icons.cart} style={styles.icon} />
+				<TouchableOpacity onPress={handleNavigateToCart}>
+					<Image source={icons.cart} style={styles.icon} />
+				</TouchableOpacity>
 			</View>
 
 			<View style={styles.content}>
@@ -124,6 +131,7 @@ const styles = StyleSheet.create({
 		flex: 1,
 		position: "relative",
 		paddingTop: 24,
+		backgroundColor: colors["lol-black"],
 	},
 	icon: {
 		width: 36,

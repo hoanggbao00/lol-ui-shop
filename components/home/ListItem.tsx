@@ -8,10 +8,11 @@ import BuyNowButton from "./BuyNowButton";
 
 interface ListItemProps {
 	item: Item;
+	showBuyNowButton?: boolean;
 }
 
 export default function ListItem(props: ListItemProps) {
-	const { item } = props;
+	const { item, showBuyNowButton = true } = props;
 
 	const formatPrice = (price: number) => {
 		return price.toLocaleString("vi-VN", {
@@ -48,7 +49,7 @@ export default function ListItem(props: ListItemProps) {
 						</View>
 					</View>
 				</View>
-				<BuyNowButton onPress={handlePress} />
+				{showBuyNowButton && <BuyNowButton onPress={handlePress} />}
 			</View>
 		</View>
 	);

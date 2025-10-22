@@ -5,16 +5,17 @@ import ListItem from "./ListItem";
 
 interface ListViewProps {
 	data: Item[];
+	showBuyNowButton?: boolean;
 }
 
 
 export default function ListView(props: ListViewProps) {
-	const { data } = props;
+	const { data, showBuyNowButton = true } = props;
 
 	return (
 		<View style={styles.list}>
 			{data.map((item) => (
-				<ListItem key={item.id} item={item} />
+				<ListItem key={item.id} item={item} showBuyNowButton={showBuyNowButton} />
 			))}
 		</View>
 	);

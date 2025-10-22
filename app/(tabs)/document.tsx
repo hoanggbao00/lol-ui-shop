@@ -4,8 +4,9 @@ import ListView from "@/components/home/ListView";
 import { mockData } from "@/libs/mock-data";
 import type { Item } from "@/types/items";
 import { Image } from "expo-image";
+import { router } from 'expo-router';
 import { useState } from "react";
-import { ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const icons = {
 	cart: require("@/assets/icons/cart.png"),
@@ -18,6 +19,10 @@ export default function Document() {
 		setData([item,...data]);
 	};
 
+	const handleNavigateToCart = () => {
+		router.push("/cart");
+	};
+
 	return (
 		<View style={styles.container}>
 			<Background />
@@ -25,7 +30,9 @@ export default function Document() {
 			<ScrollView style={styles.scrollView}>
 				<View>
 					<View style={styles.header}>
-						<Image source={icons.cart} style={styles.icon} />
+						<TouchableOpacity onPress={handleNavigateToCart}>
+							<Image source={icons.cart} style={styles.icon} />
+						</TouchableOpacity>
 					</View>
 
 					<Inputs onAddItem={handleAddItem} />
