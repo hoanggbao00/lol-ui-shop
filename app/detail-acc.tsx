@@ -64,9 +64,8 @@ export default function DetailAcc() {
 						<TinhHoaLamInfo />
 
 						<SkinNoiBat />
-
-						<DetailActions />
 					</View>
+					<DetailActions />
 				</View>
 			</ScrollView>
 		</View>

@@ -23,6 +23,7 @@ export default function DetailActions() {
 					gap: 16,
 					flexDirection: "row",
 					justifyContent: "space-between",
+					paddingTop: 16,
 				}}
 			>
 				<ActionButton
