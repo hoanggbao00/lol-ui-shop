@@ -33,7 +33,7 @@ export default function ModalQR(props: ModalQRProps) {
 		url.searchParams.set("bank", "Vietcombank"); // Ngân hàng
 		url.searchParams.set("acc", "hoanggbao"); // Số tài khoản
 		url.searchParams.set("template", ""); // Template QR
-		url.searchParams.set("amount", "50000"); // Giá tiền
+		url.searchParams.set("amount", "80000"); // Giá tiền
 		url.searchParams.set("des", "ui lol shop"); // Nội dung
 		setQrUrl(url.toString());
 	};

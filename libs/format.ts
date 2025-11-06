@@ -4,3 +4,7 @@ export const formatPrice = (price: number) => {
 		currency: "VND",
 	});
 };
+
+export const formatNumber = (number: number, locale: "vi-VN" | "en-US" = "vi-VN") => {
+	return number.toLocaleString(locale);
+};
