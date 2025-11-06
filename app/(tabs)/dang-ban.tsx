@@ -1,26 +1,41 @@
 import Background from "@/components/Background";
-import Inputs from "@/components/document/Inputs";
+import ModalDangBan from "@/components/dang-ban/ModalDangBan";
 import ListView from "@/components/home/ListView";
+import { colors } from '@/libs/colors';
 import { mockData } from "@/libs/mock-data";
 import type { Item } from "@/types/items";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
-import { router } from 'expo-router';
+import { router } from "expo-router";
 import { useState } from "react";
-import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+	ScrollView,
+	StatusBar,
+	StyleSheet,
+	Text,
+	TouchableOpacity,
+	View,
+} from "react-native";
 
 const icons = {
 	cart: require("@/assets/icons/cart.png"),
 };
 
-export default function Document() {
+export default function DangBan() {
 	const [data, setData] = useState<Item[]>(mockData);
+	const [isShowModal, setIsShowModal] = useState(false);
 
-	const handleAddItem = (item: Item) => {
-		setData([item,...data]);
+	const handleCloseModal = () => {
+		setIsShowModal(false);
 	};
 
 	const handleNavigateToCart = () => {
 		router.push("/cart");
+	};
+
+	const handleAddItem = (item: Item) => {
+		setData([...data, item]);
+		setIsShowModal(false);
 	};
 
 	return (
@@ -30,12 +45,14 @@ export default function Document() {
 			<ScrollView style={styles.scrollView}>
 				<View>
 					<View style={styles.header}>
+						<TouchableOpacity onPress={() => setIsShowModal(true)}>
+							<Ionicons name="add-circle" size={32} color={colors["lol-gold"]} />
+						</TouchableOpacity>
 						<TouchableOpacity onPress={handleNavigateToCart}>
 							<Image source={icons.cart} style={styles.icon} />
 						</TouchableOpacity>
 					</View>
 
-					<Inputs onAddItem={handleAddItem} />
 					<View>
 						<View style={listViewStyles.dividerContainer}>
 							<View style={listViewStyles.divider} />
@@ -46,6 +63,9 @@ export default function Document() {
 					</View>
 				</View>
 			</ScrollView>
+			{isShowModal && (
+				<ModalDangBan onClose={handleCloseModal} onAddItem={handleAddItem} />
+			)}
 		</View>
 	);
 }
@@ -60,7 +80,7 @@ const styles = StyleSheet.create({
 	},
 	header: {
 		flexDirection: "row",
-		justifyContent: "flex-end",
+		justifyContent: "space-between",
 		alignItems: "center",
 		padding: 16,
 	},

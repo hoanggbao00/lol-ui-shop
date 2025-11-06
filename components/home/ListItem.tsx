@@ -30,22 +30,22 @@ export default function ListItem(props: ListItemProps) {
 			<View style={styles.imageContainer}>
 				<Image source={props.item.image} style={styles.image} />
 			</View>
-			<Text style={styles.username}>{props.item.username}</Text>
+			<Text style={styles.username}>{props.item.name}</Text>
 			<View style={styles.infoContainer}>
 				<View style={styles.infoContainerLeft}>
-					<Text style={styles.price}>{formatPrice(item.price)}</Text>
+					<Text style={styles.price}>{formatPrice(item.rentPrice)}</Text>
 					<View style={styles.info}>
 						<View style={styles.infoSquareContainer}>
 							<View style={styles.infoSquare} />
-							<Text style={styles.infoText}>Rank: {item.info.rank}</Text>
+							<Text style={styles.infoText}>Rank: {item.rank}</Text>
 						</View>
 						<View style={styles.infoSquareContainer}>
 							<View style={styles.infoSquare} />
-							<Text style={styles.infoText}>Skin: {item.info.skin}</Text>
+							<Text style={styles.infoText}>Skin: {item.skinCount}</Text>
 						</View>
 						<View style={styles.infoSquareContainer}>
 							<View style={styles.infoSquare} />
-							<Text style={styles.infoText}>Champ: {item.info.champ}</Text>
+							<Text style={styles.infoText}>Champ: {item.championCount}</Text>
 						</View>
 					</View>
 				</View>

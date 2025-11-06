@@ -83,9 +83,9 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="document"
+        name="dang-ban"
         options={{
-          title: "Document",
+          title: "Đăng bán",
           tabBarIcon: ({ focused }) => (
             <DocumentIcon focused={focused} />
           ),

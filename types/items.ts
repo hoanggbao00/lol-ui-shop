@@ -1,13 +1,16 @@
-import type { ImageSourcePropType } from "react-native";
-
 export interface Item {
-	id: number;
-	username: string;
-	price: number;
-	image: ImageSourcePropType;
-	info: {
-		rank: string;
-		skin: string;
-		champ: string;
-	};
+  id: number
+  name: string
+  description: string
+  rank: string
+  level: number
+  championCount: number
+  skinCount: number
+  blueEssence: number
+  riotPoints: number
+  notableSkins: string
+  rentPrice: number
+  buyPrice: number
+  status: 'available' | 'rented' | 'sold'
+  image: string
 }
