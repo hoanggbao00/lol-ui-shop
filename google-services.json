@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1088012392527",
+    "project_id": "lol-ui-shop",
+    "storage_bucket": "lol-ui-shop.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1088012392527:android:1d9bec762c4ca7eedff23a",
+        "android_client_info": {
+          "package_name": "com.ui.lolshop"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA-xtQbU5Hmm37lALpZTOzHi6qycvJIPRU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
