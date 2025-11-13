@@ -1,15 +1,48 @@
 import Background from "@/components/Background";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword } from '@react-native-firebase/auth';
 import { Link, router } from "expo-router";
-import React, { useState } from "react";
-import { Text, TextInput, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Text, TextInput, ToastAndroid, TouchableOpacity, View } from "react-native";
 
 export default function SignIn() {
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
+	const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(true);
+  const [user, setUser] = useState(); 
+
+	function handleAuthStateChanged(_user: any) {
+    setUser(_user);
+    if (initializing) setInitializing(false);
+  }
+
+	const signIn = async () => {
+		setLoading(true);
+		try {
+			await signInWithEmailAndPassword(getAuth(), username, password);
+		} catch (error) {
+			console.error(error);
+			ToastAndroid.show('Error', ToastAndroid.SHORT);
+		} finally {
+			setLoading(false);
+		}
+	}
 
 	const onPress = () => {
-		router.push("/(tabs)");
+		signIn();
 	};
+
+	useEffect(() => {
+		if (user) {
+			router.push("/(tabs)");
+			ToastAndroid.show('Đăng nhập thành công', ToastAndroid.SHORT);
+		}
+	}, [user])
+
+	useEffect(() => {
+		const subscriber = onAuthStateChanged(getAuth(), handleAuthStateChanged);
+		return subscriber; // unsubscribe on unmount
+	}, []);
 
 	return (
 		<View

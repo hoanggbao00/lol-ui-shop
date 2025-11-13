@@ -1,7 +1,10 @@
 import Background from "@/components/Background";
 import { colors } from "@/libs/colors";
+import { getAuth, onAuthStateChanged, signOut } from '@react-native-firebase/auth';
 import { Image } from "expo-image";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ScrollView, StyleSheet, Text, ToastAndroid, TouchableOpacity, View } from "react-native";
 
 const icons = {
 	Frame: require("../../assets/icons/settings/frame.png"),
@@ -15,6 +18,27 @@ const icons = {
 };
 
 export default function User() {
+	const [initializing, setInitializing] = useState(true);
+  const [user, setUser] = useState(); 
+
+	function handleAuthStateChanged(_user: any) {
+    setUser(_user);
+    if (initializing) setInitializing(false);
+  }
+
+	useEffect(() => {
+		const subscriber = onAuthStateChanged(getAuth(), handleAuthStateChanged);
+		return subscriber;
+	}, []);
+
+	const handleLogout = async () => {
+		await signOut(getAuth());
+		ToastAndroid.show("Đăng xuất thành công", ToastAndroid.SHORT);
+		router.push("/");
+	}
+
+	if (initializing) return null;
+
 	const menus = [
 		{
 			icon: icons.Profile,
@@ -43,6 +67,9 @@ export default function User() {
 		{
 			icon: icons.Logout,
 			text: "Đăng xuất",
+			onPress: () => {
+				handleLogout();
+			},
 		},
 	];
 
@@ -66,10 +93,10 @@ export default function User() {
 					<Text style={styles.name}>ID: 12</Text>
 					<View style={styles.cardContainer}>
 						{menus.map((item, index) => (
-							<View style={styles.cardItem} key={item.text}>
+							<TouchableOpacity onPress={item.onPress} style={styles.cardItem} key={item.text}>
 								<Image source={item.icon} style={styles.icon} />
 								<Text style={styles.cardText}>{item.text}</Text>
-							</View>
+							</TouchableOpacity>
 						))}
 					</View>
 				</ScrollView>

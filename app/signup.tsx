@@ -1,20 +1,51 @@
 import Background from '@/components/Background';
-import { Link, router } from "expo-router";
-import React, { useState } from "react";
+import { createUserWithEmailAndPassword, getAuth, onAuthStateChanged } from '@react-native-firebase/auth';
+import { Link } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
   Text,
   TextInput,
+  ToastAndroid,
   TouchableOpacity,
   View
 } from "react-native";
 
 export default function SignIn() {
+  const [initializing, setInitializing] = useState(true);
+  const [user, setUser] = useState(); 
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  function handleAuthStateChanged(user) {
+    setUser(user);
+    if (initializing) setInitializing(false);
+  }
+
+  useEffect(() => {
+    const subscriber = onAuthStateChanged(getAuth(), handleAuthStateChanged);
+    return subscriber; // unsubscribe on unmount
+  }, []);
+
+  const signUp = async () => {
+		setLoading(true);
+		try {
+			await createUserWithEmailAndPassword(getAuth(), username, password);
+		} catch (error) {
+			console.error(error);
+      ToastAndroid.show('Error', ToastAndroid.SHORT);
+		} finally {
+			setLoading(false);
+		}
+	}
 
   const onPress = () => {
-    router.push("/(tabs)");
+    signUp();
   };
+
+  if (initializing) return null;
 
   return (
     <View style={{
@@ -97,8 +128,8 @@ export default function SignIn() {
               width: "100%",
               height: 40,
             }}
-            value={password}
-            onChangeText={setPassword}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
             secureTextEntry
             placeholder="Nhập lại mật khẩu"
           />
@@ -170,7 +201,7 @@ export default function SignIn() {
         </View>
 
         {/* Create new account link */}
-        <Link href="/signin" asChild>
+        <Link href="/" asChild>
           <TouchableOpacity style={{
             height: 56,
             width: "100%",
