@@ -1,148 +1,105 @@
 import Background from "@/components/Background";
+import ProfileAvatar from "@/components/profile/ProfileAvatar";
+import ProfileMenuCard from "@/components/profile/ProfileMenuCard";
 import { colors } from "@/libs/colors";
-import { getAuth, onAuthStateChanged, signOut } from '@react-native-firebase/auth';
-import { Image } from "expo-image";
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, ToastAndroid, TouchableOpacity, View } from "react-native";
+import type { User as UserType } from "@/types/user";
+import { getAuth, onAuthStateChanged } from "@react-native-firebase/auth";
+import { useEffect, useState } from "react";
+import { ScrollView, StyleSheet, View } from "react-native";
 
-const icons = {
-	Frame: require("../../assets/icons/settings/frame.png"),
-	Profile: require("../../assets/icons/settings/profile.png"),
-	Password: require("../../assets/icons/settings/password.png"),
-	History: require("../../assets/icons/settings/history.png"),
-	Export: require("../../assets/icons/settings/export.png"),
-	Wallet: require("../../assets/icons/settings/wallet.png"),
-	Language: require("../../assets/icons/settings/language.png"),
-	Logout: require("../../assets/icons/settings/logout.png"),
+// Mock user data based on SQL schema
+const mockUser: UserType = {
+	user_id: 12,
+	username: "Nam Nguyen",
+	email: "nam@example.com",
+	avatar_url: "default_avatar.png",
+	phone: "0123456789",
+	role: "user",
+	balance: 500000,
+	bank_name: "Techcombank",
+	bank_account_number: "1234567890",
+	bank_account_holder: "NGUYEN VAN NAM",
+	created_at: new Date().toISOString(),
+	is_active: true,
 };
 
 export default function User() {
 	const [initializing, setInitializing] = useState(true);
-  const [user, setUser] = useState(); 
+	const [user, setUser] = useState();
 
 	function handleAuthStateChanged(_user: any) {
-    setUser(_user);
-    if (initializing) setInitializing(false);
-  }
+		setUser(_user);
+		if (initializing) setInitializing(false);
+	}
 
 	useEffect(() => {
 		const subscriber = onAuthStateChanged(getAuth(), handleAuthStateChanged);
 		return subscriber;
 	}, []);
 
-	const handleLogout = async () => {
-		await signOut(getAuth());
-		ToastAndroid.show("Đăng xuất thành công", ToastAndroid.SHORT);
-		router.push("/");
-	}
-
 	if (initializing) return null;
 
-	const menus = [
-		{
-			icon: icons.Profile,
-			text: "Thông tin cá nhân",
-			onPress: () => {
-				router.push("/profile");
-			},
-		},
-		{
-			icon: icons.Password,
-			text: "Đổi mật khẩu",
-		},
-		{
-			icon: icons.History,
-			text: "Lịch sử giao dịch",
-		},
-		{
-			icon: icons.Export,
-			text: "Đăng, bán tài khoản",
-		},
-		{
-			icon: icons.Wallet,
-			text: "Liên kết ngân hàng",
-		},
-		{
-			icon: icons.Language,
-			text: "Đổi ngôn ngữ",
-		},
-		{
-			icon: icons.Logout,
-			text: "Đăng xuất",
-			onPress: () => {
-				handleLogout();
-			},
-		},
-	];
-
 	return (
-			<View
-				style={{
-					flex: 1,
-					backgroundColor: colors["lol-black"],
-					position: "relative",
-				}}
-			>
-				<Background />
-				<ScrollView
-					style={{
-						gap: 24,
-						padding: 24,
-					}}
-				>
-					<Image source={icons.Frame} style={styles.frame} />
-					<Text style={styles.name}>Tên: Nam Nguyen</Text>
-					<Text style={styles.name}>ID: 12</Text>
-					<View style={styles.cardContainer}>
-						{menus.map((item, index) => (
-							<TouchableOpacity onPress={item.onPress} style={styles.cardItem} key={item.text}>
-								<Image source={item.icon} style={styles.icon} />
-								<Text style={styles.cardText}>{item.text}</Text>
-							</TouchableOpacity>
-						))}
-					</View>
-				</ScrollView>
+		<View style={styles.container}>
+			<Background />
+
+			{/* Background decorative elements */}
+			<View style={styles.decorativeBackground}>
+				{/* Top glow */}
+				{/* Bottom gold accent */}
+				<View style={styles.bottomGlow} />
 			</View>
+
+			{/* Content */}
+			<ScrollView
+				style={styles.scrollView}
+				contentContainerStyle={styles.scrollContent}
+				showsVerticalScrollIndicator={false}
+			>
+				{/* Profile Header */}
+				<ProfileAvatar
+					avatarUrl={mockUser.avatar_url}
+					username={mockUser.username}
+					userId={mockUser.user_id}
+				/>
+
+				{/* Menu Card */}
+				<ProfileMenuCard />
+			</ScrollView>
+		</View>
 	);
 }
 
 const styles = StyleSheet.create({
+	container: {
+		flex: 1,
+		position: "relative",
+	},
+	decorativeBackground: {
+		position: "absolute",
+		top: 0,
+		left: 0,
+		right: 0,
+		bottom: 0,
+		overflow: "hidden",
+		pointerEvents: "none",
+	},
+	bottomGlow: {
+		position: "absolute",
+		bottom: -80,
+		left: "50%",
+		width: "100%",
+		height: 160,
+		backgroundColor: `${colors["lol-gold"]}0D`,
+		transform: [{ translateX: -192 }],
+	},
 	scrollView: {
 		flex: 1,
+		position: "relative",
+		zIndex: 10,
 	},
-	frame: {
-		width: 180,
-		height: 180,
-		marginHorizontal: "auto",
-		marginTop: 40,
-	},
-	name: {
-		color: colors["lol-gold"],
-		fontSize: 20,
-		fontWeight: "bold",
-		textAlign: "center",
-	},
-	cardContainer: {
-		backgroundColor: "#ffffff30",
-		borderWidth: 1,
-		borderColor: colors["lol-gold"],
-		padding: 20,
-		gap: 20,
-		borderRadius: 20,
-	},
-	cardItem: {
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 10,
-	},
-	icon: {
-		width: 36,
-		height: 36,
-	},
-	cardText: {
-		color: colors["lol-gold"],
-		fontSize: 20,
-		textAlign: "center",
+	scrollContent: {
+		paddingBottom: 100,
+		gap: 24,
 	},
 });
