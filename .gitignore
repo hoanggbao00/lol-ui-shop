@@ -43,3 +43,8 @@ app-example
 /android
 
 .cursorrules
+
+*.keystore
+*.log
+*.build_hash_cache
+*.apk

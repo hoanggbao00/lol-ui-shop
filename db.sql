@@ -1,5 +1,5 @@
 -- ==========================================================
--- 1. THIẾT LẬP DATABASE (CƠ SỞ DỮ LIỆU)
+-- 1. THIẾT LẬP DATABASE
 -- ==========================================================
 DROP DATABASE IF EXISTS lol_market_db;
 CREATE DATABASE lol_market_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -8,44 +8,37 @@ USE lol_market_db;
 -- ==========================================================
 -- 2. TẠO BẢNG USERS (NGƯỜI DÙNG & ADMIN)
 -- ==========================================================
--- Admin hay User thường đều nằm ở đây, phân biệt bằng cột 'role'
 CREATE TABLE Users (
     user_id INT PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(50) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL, -- Lưu mật khẩu đã mã hóa (MD5/Bcrypt)
+    password_hash VARCHAR(255) NOT NULL, 
     avatar_url VARCHAR(255) DEFAULT 'default_avatar.png',
     phone VARCHAR(20),
-    role ENUM('admin', 'user') DEFAULT 'user', -- Phân quyền
+    role ENUM('admin', 'user') DEFAULT 'user',
     
-    -- Ví tiền (Cash) của user trên hệ thống
+    -- Ví tiền & Ngân hàng
     balance DECIMAL(15, 2) DEFAULT 0, 
-    
-    -- Thông tin ngân hàng của User (Dùng để rút tiền về)
-    bank_name VARCHAR(50),          -- VD: Techcombank
-    bank_account_number VARCHAR(50), -- Số tài khoản
-    bank_account_holder VARCHAR(100), -- Tên chủ thẻ
+    bank_name VARCHAR(50),
+    bank_account_number VARCHAR(50),
+    bank_account_holder VARCHAR(100),
     
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    is_active BOOLEAN DEFAULT TRUE -- Admin có thể set FALSE để khóa acc
+    is_active BOOLEAN DEFAULT TRUE
 );
 
 -- ==========================================================
--- 3. TẠO BẢNG WALLET_TRANSACTIONS (LỊCH SỬ NẠP/RÚT TIỀN)
+-- 3. TẠO BẢNG WALLET_TRANSACTIONS (NẠP/RÚT TIỀN)
 -- ==========================================================
--- Quản lý dòng tiền vào (Nạp) và ra (Rút) khỏi hệ thống
 CREATE TABLE WalletTransactions (
     transaction_id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT NOT NULL,
-    amount DECIMAL(15, 2) NOT NULL, -- Số tiền nạp hoặc rút
-    type ENUM('deposit', 'withdraw') NOT NULL, -- deposit: Nạp tiền, withdraw: Rút tiền
-    method VARCHAR(50) NOT NULL, -- VD: "Banking", "Momo", "Card"
-    
-    -- Trạng thái xử lý
+    amount DECIMAL(15, 2) NOT NULL,
+    type ENUM('deposit', 'withdraw') NOT NULL,
+    method VARCHAR(50) NOT NULL,
     status ENUM('pending', 'completed', 'cancelled') DEFAULT 'pending',
-    
-    transaction_code VARCHAR(50), -- Mã giao dịch ngân hàng (để đối soát)
-    admin_note TEXT, -- Ghi chú của Admin (VD: "Đã chuyển khoản xong")
+    transaction_code VARCHAR(50),
+    admin_note TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
@@ -53,38 +46,71 @@ CREATE TABLE WalletTransactions (
 );
 
 -- ==========================================================
--- 4. TẠO BẢNG LOL_ACCOUNTS (TÀI KHOẢN GAME ĐANG BÁN)
+-- 4. TẠO BẢNG LOL_ACCOUNTS (TÀI KHOẢN GAME)
 -- ==========================================================
+-- Cập nhật: Chỉ ID, Seller, Title, Level, Thumbnail là REQUIRED
+-- Các trường còn lại (bao gồm giá, login) đều là NULLABLE
 CREATE TABLE LolAccounts (
     account_id INT PRIMARY KEY AUTO_INCREMENT,
-    seller_id INT NOT NULL, -- Người đăng bán
+    seller_id INT NOT NULL, -- [REQUIRED]
     
-    -- Thông tin hiển thị (Public)
-    title VARCHAR(255) NOT NULL, -- Tiêu đề bài đăng
-    ingame_name VARCHAR(100), -- Tên nhân vật (VD: YasuoNo1 #VN2)
-    rank_level VARCHAR(50), -- Rank (VD: Sắt, Đồng, Kim Cương...)
-    skin_count INT DEFAULT 0, -- Số trang phục
-    champ_count INT DEFAULT 0, -- Số tướng
-    thumbnail_url VARCHAR(255), -- Ảnh đại diện
-    description TEXT, -- Thông tin thêm (gộp content, tiêu đề phụ vào đây)
+    -- --- THÔNG TIN BẮT BUỘC (REQUIRED) ---
+    title VARCHAR(255) NOT NULL,        -- [REQUIRED] Tiêu đề
+    level INT NOT NULL,                 -- [REQUIRED] Level game
+    thumbnail_url VARCHAR(255) NOT NULL,-- [REQUIRED] Ảnh hiển thị
     
-    -- Thông tin đăng nhập (Private - Chỉ hiện khi đã mua/thuê)
-    login_username VARCHAR(100) NOT NULL, 
-    login_password VARCHAR(100) NOT NULL,
+    -- --- THÔNG TIN CÓ THỂ BỎ TRỐNG (NULLABLE) ---
+    ingame_name VARCHAR(100) NULL,      -- Tên nhân vật
+    description TEXT NULL,              -- Mô tả (gộp chung)
+    server VARCHAR(50) NULL,
+    region VARCHAR(50) NULL,
+    avatar_url VARCHAR(255) NULL,       -- Ảnh avatar ingame
     
-    -- Giá cả
-    buy_price DECIMAL(15, 2) DEFAULT 0, -- Giá mua đứt
-    rent_price_per_hour DECIMAL(15, 2) DEFAULT 0, -- Giá thuê 1 giờ
+    -- Stats (Mặc định null)
+    champ_count INT NULL,
+    skin_count INT NULL,
+    blue_essence INT NULL,
+    orange_essence INT NULL,
+    rp INT NULL,
+    honor_level INT NULL,
+    mastery_points INT NULL,
     
-    -- Trạng thái tài khoản
+    -- Rank Solo (Mặc định null)
+    solo_rank VARCHAR(50) NULL,
+    solo_division VARCHAR(10) NULL,
+    solo_lp INT NULL,
+    solo_wins INT NULL,
+    
+    -- Rank Flex (Mặc định null)
+    flex_rank VARCHAR(50) NULL,
+    flex_division VARCHAR(10) NULL,
+    flex_lp INT NULL,
+    flex_wins INT NULL,
+    
+    -- Rank TFT (Mặc định null)
+    tft_rank VARCHAR(50) NULL,
+    tft_division VARCHAR(10) NULL,
+    tft_lp INT NULL,
+    tft_wins INT NULL,
+
+    -- Thông tin đăng nhập (Ẩn, Nullable)
+    login_username VARCHAR(100) NULL, 
+    login_password VARCHAR(100) NULL,
+    
+    -- Giá cả (Nullable - cho phép dạng "Liên hệ")
+    buy_price DECIMAL(15, 2) NULL,
+    rent_price_per_hour DECIMAL(15, 2) NULL,
+    
+    -- Trạng thái & Meta
     status ENUM('available', 'sold', 'renting', 'hidden') DEFAULT 'available',
-    
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
     FOREIGN KEY (seller_id) REFERENCES Users(user_id) ON DELETE CASCADE
 );
 
 -- ==========================================================
--- 5. TẠO BẢNG ACCOUNT_IMAGES (ẢNH CHI TIẾT CỦA ACC)
+-- 5. TẠO BẢNG ACCOUNT_IMAGES (ẢNH CHI TIẾT)
 -- ==========================================================
 CREATE TABLE AccountImages (
     image_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -96,28 +122,32 @@ CREATE TABLE AccountImages (
 -- ==========================================================
 -- 6. TẠO BẢNG ORDERS (HÓA ĐƠN TỔNG)
 -- ==========================================================
--- Lưu lịch sử khi người dùng thực hiện thanh toán mua/thuê
 CREATE TABLE Orders (
     order_id INT PRIMARY KEY AUTO_INCREMENT,
     buyer_id INT NOT NULL,
-    total_amount DECIMAL(15, 2) NOT NULL, -- Tổng tiền thanh toán
-    status ENUM('completed', 'refunded') DEFAULT 'completed', -- Trạng thái đơn
+    total_amount DECIMAL(15, 2) NOT NULL,
+    
+    -- Status khớp với TypeScript: pending, paid, renting, completed, refunded, cancelled
+    status ENUM('pending', 'paid', 'renting', 'completed', 'refunded', 'cancelled') DEFAULT 'pending',
+    
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
     FOREIGN KEY (buyer_id) REFERENCES Users(user_id)
 );
 
 -- ==========================================================
--- 7. TẠO BẢNG ORDER_DETAILS (CHI TIẾT HÓA ĐƠN)
+-- 7. TẠO BẢNG ORDER_DETAILS (CHI TIẾT ĐƠN HÀNG)
 -- ==========================================================
--- Vì 1 đơn hàng có thể mua nhiều acc, hoặc vừa mua vừa thuê
 CREATE TABLE OrderDetails (
     detail_id INT PRIMARY KEY AUTO_INCREMENT,
     order_id INT NOT NULL,
     account_id INT NOT NULL,
     
-    transaction_type ENUM('buy', 'rent') NOT NULL, -- Mua hay Thuê
+    transaction_type ENUM('purchase', 'rent') NOT NULL, -- Mua đứt hoặc Thuê
     price DECIMAL(15, 2) NOT NULL, -- Giá tại thời điểm giao dịch
-    rent_duration_hours INT DEFAULT 0, -- Số giờ thuê (nếu là rent)
+    rent_duration_hours INT DEFAULT 0, -- Số giờ thuê
+    rent_end_date TIMESTAMP NULL, -- [NEW] Thời điểm hết hạn thuê
     
     FOREIGN KEY (order_id) REFERENCES Orders(order_id) ON DELETE CASCADE,
     FOREIGN KEY (account_id) REFERENCES LolAccounts(account_id)
@@ -126,37 +156,14 @@ CREATE TABLE OrderDetails (
 -- ==========================================================
 -- 8. TẠO BẢNG CART_ITEMS (GIỎ HÀNG)
 -- ==========================================================
--- Lưu tạm các acc người dùng định mua
 CREATE TABLE CartItems (
     cart_id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT NOT NULL,
     account_id INT NOT NULL,
-    type ENUM('buy', 'rent') NOT NULL,
+    type ENUM('purchase', 'rent') NOT NULL,
     rent_duration INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (account_id) REFERENCES LolAccounts(account_id) ON DELETE CASCADE
 );
-
--- ==========================================================
--- 9. DỮ LIỆU MẪU (TEST DATA)
--- ==========================================================
-
--- Tạo 1 Admin và 1 User
-INSERT INTO Users (username, email, password_hash, role, balance) VALUES 
-('admin_vip', 'admin@shop.com', 'hashed_password_123', 'admin', 0),
-('khach_hang_A', 'userA@gmail.com', 'hashed_password_456', 'user', 500000);
-
--- Tạo lệnh nạp tiền mẫu (User A nạp 100k, đang chờ duyệt)
-INSERT INTO WalletTransactions (user_id, amount, type, method, status) VALUES 
-(2, 100000, 'deposit', 'Banking VCB', 'pending');
-
--- User A đăng bán 1 acc LOL
-INSERT INTO LolAccounts (seller_id, title, ingame_name, rank_level, buy_price, login_username, login_password) VALUES 
-(2, 'Acc Yasuo Ma Kiếm bao ngầu', 'Hasagi#VN', 'Platinum II', 200000, 'acc_rac_1', 'matkhau123');
-
--- Thêm ảnh cho acc vừa tạo (giả sử account_id là 1)
-INSERT INTO AccountImages (account_id, image_url) VALUES 
-(1, 'link_anh_tuong.jpg'),
-(1, 'link_anh_skin.jpg');

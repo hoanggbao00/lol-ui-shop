@@ -51,7 +51,7 @@ export default function ProfileMenuCard() {
 			icon: Upload,
 			text: "Đăng, bán tài khoản",
 			onPress: () => {
-				// TODO: Implement sell account
+				router.push("/new");
 			},
 		},
 		{

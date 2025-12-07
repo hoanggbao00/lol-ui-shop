@@ -3,6 +3,7 @@ import RankCard from "@/components/detail-account/RankCard";
 import StatBadge from "@/components/detail-account/StatBadge";
 import { ADMIN_BANK } from "@/libs/admin-bank";
 import { colors } from "@/libs/colors";
+import { getRanksArray } from '@/libs/get-ranks-array';
 import type { AccountDetail } from "@/types/account";
 import { Image } from "expo-image";
 import { router } from "expo-router";
@@ -28,64 +29,43 @@ import {
 	View
 } from "react-native";
 
-// Mock data based on the reference
+// Mock data based on the new schema
 const mockAccount: AccountDetail = {
 	id: "acc-001",
 	username: "mid24",
+	title: "Acc Chính Chủ",
 	level: 902,
 	avatarUrl:
 		"https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/5799.png",
 	server: "VN",
-	price: 2500000,
-	ranks: [
-		{
-			mode: "LH 5V5",
-			rank: "LỤC BẢO III",
-			tier: "emerald",
-			wins: 200,
-			lp: 55,
-			icon: "",
-		},
-		{
-			mode: "ĐƠN/ĐÔI",
-			rank: "LỤC BẢO IV",
-			tier: "emerald",
-			wins: 313,
-			lp: 84,
-			icon: "",
-		},
-		{
-			mode: "ĐTCL",
-			rank: "VÀNG III",
-			tier: "gold",
-			wins: 37,
-			lp: 99,
-			icon: "",
-		},
-		{
-			mode: "CẶP ĐÔI HOÀN HẢO",
-			rank: "CHƯA CÓ HẠNG",
-			tier: "unranked",
-			wins: 0,
-			lp: 0,
-			icon: "",
-		},
-		{
-			mode: "MÙA TRƯỚC",
-			rank: "LỤC BẢO",
-			tier: "emerald",
-			wins: 0,
-			lp: 0,
-			icon: "",
-		},
-	],
-	honorLevel: 4,
-	masteryPoints: 1153,
-	region: "SHURIMA",
+	
+	// Stats
 	champions: 120,
 	skins: 85,
 	blueEssence: 15000,
 	orangeEssence: 3200,
+	rp: 0,
+	honorLevel: 4,
+	masteryPoints: 1153,
+	region: "SHURIMA",
+	
+	// Ranks
+	soloRank: "Emerald",
+	soloDivision: "IV",
+	soloLP: 84,
+	soloWins: 313,
+	flexRank: "Emerald",
+	flexDivision: "III",
+	flexLP: 55,
+	flexWins: 200,
+	tftRank: "Gold",
+	tftDivision: "III",
+	tftLP: 99,
+	tftWins: 37,
+	
+	// Pricing
+	price: 2500000,
+	rentPricePerHour: 10000,
 	description: "Acc chính chủ, full tướng, nhiều skin hiếm",
 };
 
@@ -100,12 +80,15 @@ const formatPrice = (price: number) => {
 const MOCK_USER_ID = 12;
 
 // Rental duration options (in hours)
-const RENTAL_OPTIONS = [
-	{ hours: 48, label: "48 giờ", price: 50000 },
-	{ hours: 72, label: "72 giờ", price: 70000 },
-	{ hours: 120, label: "5 ngày", price: 100000 },
-	{ hours: 168, label: "7 ngày", price: 130000 },
-];
+const getRentalOptions = () => {
+	const basePrice = mockAccount.rentPricePerHour || 1000;
+	return [
+		{ hours: 48, label: "48 giờ", price: basePrice * 48 },
+		{ hours: 72, label: "72 giờ", price: basePrice * 72 },
+		{ hours: 120, label: "5 ngày", price: basePrice * 120 },
+		{ hours: 168, label: "7 ngày", price: basePrice * 168 },
+	];
+};
 
 export default function DetailAcc() {
 	const [buyModalOpen, setBuyModalOpen] = useState(false);
@@ -201,10 +184,15 @@ export default function DetailAcc() {
 						<View style={styles.profileInfo}>
 							<View style={styles.profileNameRow}>
 								<Text style={styles.profileName}>{mockAccount.username}</Text>
-								<View style={styles.serverBadge}>
-									<Text style={styles.serverText}>{mockAccount.server}</Text>
-								</View>
+								{mockAccount.server && (
+									<View style={styles.serverBadge}>
+										<Text style={styles.serverText}>{mockAccount.server}</Text>
+									</View>
+								)}
 							</View>
+							{mockAccount.title && (
+								<Text style={styles.profileTitle}>{mockAccount.title}</Text>
+							)}
 							<Text style={styles.profileDescription}>
 								{mockAccount.description}
 							</Text>
@@ -219,7 +207,7 @@ export default function DetailAcc() {
 						<Text style={styles.sectionTitle}>Xếp hạng</Text>
 					</View>
 					<View style={styles.ranksGrid}>
-						{mockAccount.ranks.map((rank, index) => (
+						{getRanksArray(mockAccount).map((rank, index) => (
 							<RankCard key={index.toString()} rank={rank} />
 						))}
 					</View>
@@ -277,6 +265,14 @@ export default function DetailAcc() {
 								{mockAccount.orangeEssence.toLocaleString()}
 							</Text>
 						</View>
+						{mockAccount.rp !== undefined && (
+							<View style={styles.assetItem}>
+								<Text style={styles.assetLabel}>RP</Text>
+								<Text style={[styles.assetValue, { color: "#ff6b6b" }]}>
+									{mockAccount.rp.toLocaleString()}
+								</Text>
+							</View>
+						)}
 					</View>
 				</View>
 
@@ -404,7 +400,7 @@ export default function DetailAcc() {
 									Chọn thời gian thuê:
 								</Text>
 								<View style={styles.rentalOptions}>
-									{RENTAL_OPTIONS.map((option) => (
+									{getRentalOptions().map((option) => (
 										<TouchableOpacity
 											key={option.hours}
 											style={styles.rentalOption}
@@ -436,7 +432,7 @@ export default function DetailAcc() {
 										</Text>
 										<Text style={styles.selectedRentalValue}>
 											{
-												RENTAL_OPTIONS.find((o) => o.hours === selectedRental)
+												getRentalOptions().find((o) => o.hours === selectedRental)
 													?.label
 											}
 										</Text>
@@ -450,7 +446,7 @@ export default function DetailAcc() {
 											]}
 										>
 											{formatPrice(
-												RENTAL_OPTIONS.find((o) => o.hours === selectedRental)
+												getRentalOptions().find((o) => o.hours === selectedRental)
 													?.price || 0
 											)}
 										</Text>
@@ -620,6 +616,11 @@ const styles = StyleSheet.create({
 		fontSize: 20,
 		fontWeight: "bold",
 		color: colors.foreground,
+	},
+	profileTitle: {
+		fontSize: 13,
+		fontWeight: "500",
+		color: colors.primary,
 	},
 	serverBadge: {
 		backgroundColor: `${colors.primary}33`,
