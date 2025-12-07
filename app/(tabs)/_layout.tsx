@@ -66,7 +66,7 @@ export default function TabLayout() {
 	}, []);
 
 	useEffect(() => {
-		if (!user) {
+		if (!user && !initializing) {
 			router.replace("/");
 		}
 	}, [user]);
@@ -84,7 +84,7 @@ export default function TabLayout() {
 			<StatusBar barStyle="light-content" />
 
 			<Tabs.Screen
-				name="index"
+				name="home"
 				options={{
 					title: "Home",
 					tabBarIcon: ({ focused }) => <HomeIcon focused={focused} />,

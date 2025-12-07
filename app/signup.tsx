@@ -3,6 +3,7 @@ import { createUserWithEmailAndPassword, getAuth, onAuthStateChanged } from '@re
 import { Link } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  StyleSheet,
   Text,
   TextInput,
   ToastAndroid,
@@ -75,10 +76,7 @@ export default function SignIn() {
             Tên người dùng, email/số di động
           </Text>
           <TextInput
-            style={{
-              width: "100%",
-              height: 40,
-            }}
+            style={styles.textInput}
             value={username}
             onChangeText={setUsername}
             placeholder="Tên người dùng, email/số di động"
@@ -99,10 +97,7 @@ export default function SignIn() {
             Mật khẩu
           </Text>
           <TextInput
-            style={{
-              width: "100%",
-              height: 40,
-            }}
+            style={styles.textInput}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -124,10 +119,7 @@ export default function SignIn() {
             Nhập lại mật khẩu
           </Text>
           <TextInput
-            style={{
-              width: "100%",
-              height: 40,
-            }}
+            style={styles.textInput}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
@@ -226,3 +218,11 @@ export default function SignIn() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  textInput: {
+    width: "100%",
+    height: 40,
+    color: "#A0ADB5",
+  },
+});

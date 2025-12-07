@@ -34,7 +34,7 @@ export default function SignIn() {
 
 	useEffect(() => {
 		if (user) {
-			router.push("/(tabs)");
+			router.push("/(tabs)/home");
 			ToastAndroid.show('Đăng nhập thành công', ToastAndroid.SHORT);
 		}
 	}, [user])

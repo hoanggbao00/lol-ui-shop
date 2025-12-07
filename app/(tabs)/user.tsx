@@ -43,6 +43,9 @@ export default function User() {
 		{
 			icon: icons.Profile,
 			text: "Thông tin cá nhân",
+			onPress: () => {
+				router.push("/profile");
+			},
 		},
 		{
 			icon: icons.Password,

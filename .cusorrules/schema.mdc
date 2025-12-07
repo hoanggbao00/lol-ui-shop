@@ -1,0 +1,2 @@
+- Các entity đều nằm trong file `/db.sql`.
+- Các type cũng sẽ dựa theo file này để tạo và đặt trong `/types/*`
