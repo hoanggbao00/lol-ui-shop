@@ -3,5 +3,4 @@ alwaysApply: true
 ---
 Dùng `uniwind` để style các component.
 Dùng các component từ `heroui-native` để tạo các component UI.
-Truy cập color của uniwind bằng hook `const themeColorForeground = useThemeColor('foreground');` (thay foreground thành các color khác nếu cần) (import { Button, Divider, Select, useThemeColor } from 'heroui-native';)
 
