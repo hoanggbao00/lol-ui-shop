@@ -9,12 +9,13 @@ export default function RootLayout() {
 		<Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors["lol-black"] } }}>
 			<Stack.Screen name="index" />
 			<Stack.Screen name="signup" />
-			
+			<Stack.Screen name="new" />
 			<Stack.Screen name="(tabs)" />
 
 			<Stack.Screen name="detail-acc" />
 			<Stack.Screen name="cart" />
 			<Stack.Screen name="profile" />
+
 		</Stack>
 		</GestureHandlerRootView>
 	);

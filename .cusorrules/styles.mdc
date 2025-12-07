@@ -1,6 +1,0 @@
----
-alwaysApply: true
----
-Dùng `uniwind` để style các component.
-Dùng các component từ `heroui-native` để tạo các component UI.
-

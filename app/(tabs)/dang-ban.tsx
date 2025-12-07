@@ -1,5 +1,4 @@
 import Background from "@/components/Background";
-import ModalDangBan from "@/components/dang-ban/ModalDangBan";
 import ListView from "@/components/home/ListView";
 import { colors } from '@/libs/colors';
 import { mockData } from "@/libs/mock-data";
@@ -23,19 +22,9 @@ const icons = {
 
 export default function DangBan() {
 	const [data, setData] = useState<Item[]>(mockData);
-	const [isShowModal, setIsShowModal] = useState(false);
-
-	const handleCloseModal = () => {
-		setIsShowModal(false);
-	};
 
 	const handleNavigateToCart = () => {
 		router.push("/cart");
-	};
-
-	const handleAddItem = (item: Item) => {
-		setData([...data, item]);
-		setIsShowModal(false);
 	};
 
 	return (
@@ -45,7 +34,7 @@ export default function DangBan() {
 			<ScrollView style={styles.scrollView}>
 				<View>
 					<View style={styles.header}>
-						<TouchableOpacity onPress={() => setIsShowModal(true)}>
+						<TouchableOpacity onPress={() => router.push("/new")}>
 							<Ionicons name="add-circle" size={32} color={colors["lol-gold"]} />
 						</TouchableOpacity>
 						<TouchableOpacity onPress={handleNavigateToCart}>
@@ -63,9 +52,6 @@ export default function DangBan() {
 					</View>
 				</View>
 			</ScrollView>
-			{isShowModal && (
-				<ModalDangBan onClose={handleCloseModal} onAddItem={handleAddItem} />
-			)}
 		</View>
 	);
 }
