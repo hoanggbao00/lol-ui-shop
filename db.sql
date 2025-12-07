@@ -48,8 +48,6 @@ CREATE TABLE WalletTransactions (
 -- ==========================================================
 -- 4. TẠO BẢNG LOL_ACCOUNTS (TÀI KHOẢN GAME)
 -- ==========================================================
--- Cập nhật: Chỉ ID, Seller, Title, Level, Thumbnail là REQUIRED
--- Các trường còn lại (bao gồm giá, login) đều là NULLABLE
 CREATE TABLE LolAccounts (
     account_id INT PRIMARY KEY AUTO_INCREMENT,
     seller_id INT NOT NULL, -- [REQUIRED]
@@ -107,16 +105,6 @@ CREATE TABLE LolAccounts (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
     FOREIGN KEY (seller_id) REFERENCES Users(user_id) ON DELETE CASCADE
-);
-
--- ==========================================================
--- 5. TẠO BẢNG ACCOUNT_IMAGES (ẢNH CHI TIẾT)
--- ==========================================================
-CREATE TABLE AccountImages (
-    image_id INT PRIMARY KEY AUTO_INCREMENT,
-    account_id INT NOT NULL,
-    image_url VARCHAR(255) NOT NULL,
-    FOREIGN KEY (account_id) REFERENCES LolAccounts(account_id) ON DELETE CASCADE
 );
 
 -- ==========================================================
