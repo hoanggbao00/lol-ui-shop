@@ -1,43 +1,84 @@
+import { getUserById } from "@/actions/user.action";
 import Background from "@/components/Background";
 import ProfileAvatar from "@/components/profile/ProfileAvatar";
 import ProfileMenuCard from "@/components/profile/ProfileMenuCard";
 import { colors } from "@/libs/colors";
-import type { User as UserType } from "@/types/user";
-import { getAuth, onAuthStateChanged } from "@react-native-firebase/auth";
+import type { User } from "@/types";
+import { getApp } from "@react-native-firebase/app";
+import {
+	type FirebaseAuthTypes,
+	getAuth,
+	onAuthStateChanged,
+} from "@react-native-firebase/auth";
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import {
+	ActivityIndicator,
+	ScrollView,
+	StyleSheet,
+	Text,
+	View,
+} from "react-native";
 
-// Mock user data based on SQL schema
-const mockUser: UserType = {
-	user_id: 12,
-	username: "Nam Nguyen",
-	email: "nam@example.com",
-	avatar_url: "default_avatar.png",
-	phone: "0123456789",
-	role: "user",
-	balance: 500000,
-	bank_name: "Techcombank",
-	bank_account_number: "1234567890",
-	bank_account_holder: "NGUYEN VAN NAM",
-	created_at: new Date().toISOString(),
-	is_active: true,
-};
-
-export default function User() {
+export default function UserScreen() {
 	const [initializing, setInitializing] = useState(true);
-	const [user, setUser] = useState();
+	const [authUser, setAuthUser] = useState<FirebaseAuthTypes.User | null>(null);
+	const [userData, setUserData] = useState<User | null>(null);
+	const [loading, setLoading] = useState(true);
 
-	function handleAuthStateChanged(_user: any) {
-		setUser(_user);
+	function handleAuthStateChanged(_user: FirebaseAuthTypes.User | null) {
+		setAuthUser(_user);
 		if (initializing) setInitializing(false);
 	}
 
 	useEffect(() => {
-		const subscriber = onAuthStateChanged(getAuth(), handleAuthStateChanged);
+		const app = getApp();
+		const auth = getAuth(app);
+		const subscriber = onAuthStateChanged(auth, handleAuthStateChanged);
 		return subscriber;
 	}, []);
 
-	if (initializing) return null;
+	// Fetch user data from Firestore when auth user is available
+	useEffect(() => {
+		const fetchUserData = async () => {
+			if (authUser?.uid) {
+				try {
+					setLoading(true);
+					const user = await getUserById(authUser.uid);
+					setUserData(user);
+				} catch (error) {
+					console.error("Error fetching user data:", error);
+				} finally {
+					setLoading(false);
+				}
+			} else {
+				setLoading(false);
+			}
+		};
+
+		if (!initializing) {
+			fetchUserData();
+		}
+	}, [authUser, initializing]);
+
+	if (initializing || loading) {
+		return (
+			<View style={[styles.container, styles.centerContent]}>
+				<Background />
+				<ActivityIndicator size="large" color={colors["lol-gold"]} />
+			</View>
+		);
+	}
+
+	if (!authUser || !userData) {
+		return (
+			<View style={[styles.container, styles.centerContent]}>
+				<Background />
+				<Text style={styles.errorText}>
+					Vui lòng đăng nhập để xem thông tin
+				</Text>
+			</View>
+		);
+	}
 
 	return (
 		<View style={styles.container}>
@@ -58,9 +99,9 @@ export default function User() {
 			>
 				{/* Profile Header */}
 				<ProfileAvatar
-					avatarUrl={mockUser.avatar_url}
-					username={mockUser.username}
-					userId={mockUser.user_id}
+					avatarUrl={userData.avatarUrl}
+					username={userData.username}
+					userId={userData.uid}
 				/>
 
 				{/* Menu Card */}
@@ -74,6 +115,16 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		position: "relative",
+	},
+	centerContent: {
+		justifyContent: "center",
+		alignItems: "center",
+	},
+	errorText: {
+		color: colors["lol-gold"],
+		fontSize: 16,
+		fontWeight: "600",
+		textAlign: "center",
 	},
 	decorativeBackground: {
 		position: "absolute",

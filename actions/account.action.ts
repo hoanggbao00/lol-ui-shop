@@ -1,6 +1,21 @@
 import type { AccountStatus, LolAccount } from "@/types";
-import auth from "@react-native-firebase/auth";
-import firestore from "@react-native-firebase/firestore";
+import { getApp } from "@react-native-firebase/app";
+import { getAuth } from "@react-native-firebase/auth";
+import {
+	addDoc,
+	collection,
+	doc,
+	getDoc,
+	getDocs,
+	getFirestore,
+	limit,
+	orderBy,
+	query,
+	serverTimestamp,
+	startAfter,
+	updateDoc,
+	where,
+} from "@react-native-firebase/firestore";
 
 const ACCOUNTS_COLL = "lol_accounts";
 
@@ -13,8 +28,8 @@ type CreateAccountPayload = Omit<
 // Helper: Xóa thông tin nhạy cảm trước khi trả về cho khách xem
 const stripSensitiveData = (data: LolAccount): LolAccount => {
 	const cleanData = { ...data };
-	cleanData.loginUsername = undefined;  
-	cleanData.loginPassword = undefined;  
+	cleanData.loginUsername = undefined;
+	cleanData.loginPassword = undefined;
 	return cleanData;
 };
 
@@ -22,14 +37,19 @@ const stripSensitiveData = (data: LolAccount): LolAccount => {
  * 1. ĐĂNG BÁN ACCOUNT MỚI
  */
 export const createAccount = async (data: CreateAccountPayload) => {
-	const currentUser = auth().currentUser;
+	const app = getApp();
+	const auth = getAuth(app);
+	const currentUser = auth.currentUser;
 	if (!currentUser) throw new Error("Vui lòng đăng nhập để đăng bán");
+
+	const db = getFirestore(app);
+	const accountsRef = collection(db, ACCOUNTS_COLL);
 
 	const newAccount = {
 		...data,
 		sellerId: currentUser.uid,
 		status: "available" as AccountStatus,
-		createdAt: firestore.FieldValue.serverTimestamp(),
+		createdAt: serverTimestamp(),
 		// Đảm bảo các trường optional không bị undefined gây lỗi
 		ingameName: data.ingameName || null,
 		description: data.description || "",
@@ -37,31 +57,37 @@ export const createAccount = async (data: CreateAccountPayload) => {
 		flexRank: data.flexRank || null,
 	};
 
-	await firestore().collection(ACCOUNTS_COLL).add(newAccount);
+	await addDoc(accountsRef, newAccount);
 };
 
 /**
  * 2. LẤY DANH SÁCH ACCOUNT (Có phân trang & Lọc)
- * @param limit Số lượng load mỗi lần
+ * @param limitCount Số lượng load mỗi lần
  * @param lastDoc Document cuối cùng của lần load trước (để load more)
  */
+export const getAvailableAccounts = async (
+	limitCount = 10,
+	lastDoc?: QueryDocumentSnapshot
+) => {
+	const app = getApp();
+	const db = getFirestore(app);
+	const accountsRef = collection(db, ACCOUNTS_COLL);
 
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-export  const getAvailableAccounts = async (limit = 10, lastDoc?: any) => {
-	let query = firestore()
-		.collection(ACCOUNTS_COLL)
-		.where("status", "==", "available")
-		.orderBy("createdAt", "desc")
-		.limit(limit);
+	let q = query(
+		accountsRef,
+		where("status", "==", "available"),
+		orderBy("createdAt", "desc"),
+		limit(limitCount)
+	);
 
 	if (lastDoc) {
-		query = query.startAfter(lastDoc);
+		q = query(q, startAfter(lastDoc));
 	}
 
-	const snapshot = await query.get();
+	const snapshot = await getDocs(q);
 
-	const accounts = snapshot.docs.map((doc) => {
-		const data = { id: doc.id, ...doc.data() } as LolAccount;
+	const accounts = snapshot.docs.map((docSnap) => {
+		const data = { id: docSnap.id, ...docSnap.data() } as LolAccount;
 		// Với danh sách bên ngoài, ta luôn ẩn pass
 		return stripSensitiveData(data);
 	});
@@ -79,12 +105,17 @@ export  const getAvailableAccounts = async (limit = 10, lastDoc?: any) => {
 export const getAccountById = async (
 	accountId: string,
 ): Promise<LolAccount | null> => {
-	const doc = await firestore().collection(ACCOUNTS_COLL).doc(accountId).get();
+	const app = getApp();
+	const db = getFirestore(app);
+	const auth = getAuth(app);
 
-	if (!doc.exists) return null;
+	const accountRef = doc(collection(db, ACCOUNTS_COLL), accountId);
+	const docSnap = await getDoc<LolAccount>(accountRef);
 
-	const data = { id: doc.id, ...doc.data() } as LolAccount;
-	const currentUser = auth().currentUser;
+	if (!docSnap.exists()) return null;
+
+	const data = { id: docSnap.id, ...docSnap.data() } as LolAccount;
+	const currentUser = auth.currentUser;
 
 	// Logic bảo mật phía Client:
 	// Chỉ trả về User/Pass nếu người xem là chủ sở hữu (Seller)
@@ -106,23 +137,27 @@ export const filterAccounts = async (
 	minPrice?: number,
 	maxPrice?: number,
 ) => {
-	let query = firestore()
-		.collection(ACCOUNTS_COLL)
-		.where("status", "==", "available");
+	const app = getApp();
+	const db = getFirestore(app);
+	const accountsRef = collection(db, ACCOUNTS_COLL);
+
+	const constraints = [where("status", "==", "available")];
 
 	// Query vào Nested Object: dùng dấu chấm "."
 	// Lưu ý: Cần tạo Index trên Firestore Console cho 'soloRank.tier'
 	if (rankTier) {
-		query = query.where("soloRank.tier", "==", rankTier);
+		constraints.push(where("soloRank.tier", "==", rankTier));
 	}
 
 	if (maxPrice) {
-		query = query.where("buyPrice", "<=", maxPrice);
+		constraints.push(where("buyPrice", "<=", maxPrice));
 	}
 
-	const snapshot = await query.get();
-	return snapshot.docs.map((doc) =>
-		stripSensitiveData({ id: doc.id, ...doc.data() } as LolAccount),
+	const q = query(accountsRef, ...constraints);
+	const snapshot = await getDocs(q);
+
+	return snapshot.docs.map((docSnap) =>
+		stripSensitiveData({ id: docSnap.id, ...docSnap.data() } as LolAccount),
 	);
 };
 
@@ -133,7 +168,11 @@ export const updateAccountStatus = async (
 	accountId: string,
 	status: AccountStatus,
 ) => {
-	await firestore().collection(ACCOUNTS_COLL).doc(accountId).update({
-		status: status,
+	const app = getApp();
+	const db = getFirestore(app);
+	const accountRef = doc(collection(db, ACCOUNTS_COLL), accountId);
+
+	await updateDoc(accountRef, {
+		status,
 	});
 };

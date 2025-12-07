@@ -8,7 +8,7 @@ const frameIcon = require("@/assets/icons/settings/frame.png");
 interface ProfileAvatarProps {
 	avatarUrl?: string;
 	username: string;
-	userId: number;
+	userId: string | number;
 }
 
 export default function ProfileAvatar({
