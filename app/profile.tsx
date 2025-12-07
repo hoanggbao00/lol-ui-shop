@@ -1,7 +1,9 @@
+import { getUserById, updateUser } from '@/actions/user.action'
 import Background from '@/components/Background'
 import { ADMIN_BANK } from '@/libs/admin-bank'
 import { colors } from '@/libs/colors'
-import type { User as UserType } from '@/types/user'
+import type { User } from '@/types'
+import { getApp } from '@react-native-firebase/app'
 import type { FirebaseAuthTypes } from '@react-native-firebase/auth'
 import { getAuth, onAuthStateChanged } from '@react-native-firebase/auth'
 import { Image } from 'expo-image'
@@ -9,23 +11,7 @@ import { router } from 'expo-router'
 import { ArrowLeft, Building2, CreditCard, Mail, Minus, Phone, Plus, Save, User as UserIcon, Wallet } from 'lucide-react-native'
 import type React from 'react'
 import { useCallback, useEffect, useState } from 'react'
-import { Modal, ScrollView, Text, TextInput, ToastAndroid, TouchableOpacity, View } from 'react-native'
-
-// Mock user data - replace with actual data from Firebase/API
-const mockUser: UserType = {
-  user_id: 12,
-  username: "Nam Nguyen",
-  email: "nam@example.com",
-  avatar_url: "default_avatar.png",
-  phone: "0123456789",
-  role: "user",
-  balance: 500000,
-  bank_name: "Techcombank",
-  bank_account_number: "1234567890",
-  bank_account_holder: "NGUYEN VAN NAM",
-  created_at: "2024-01-15T10:30:00Z",
-  is_active: true,
-}
+import { ActivityIndicator, Modal, ScrollView, Text, TextInput, ToastAndroid, TouchableOpacity, View } from 'react-native'
 
 interface InfoFieldProps {
   icon: React.ComponentType<{ size?: number; color?: string }>
@@ -75,14 +61,17 @@ const InfoField = ({ icon: Icon, label, value, onChangeText, placeholder, editab
 export default function ProfileScreen() {
   const [initializing, setInitializing] = useState(true)
   const [authUser, setAuthUser] = useState<FirebaseAuthTypes.User | null>(null)
+  const [userData, setUserData] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   
   // Editable user data
-  const [username, setUsername] = useState(mockUser.username)
-  const [email, setEmail] = useState(mockUser.email)
-  const [phone, setPhone] = useState(mockUser.phone || "")
-  const [bankName, setBankName] = useState(mockUser.bank_name || "")
-  const [bankAccountNumber, setBankAccountNumber] = useState(mockUser.bank_account_number || "")
-  const [bankAccountHolder, setBankAccountHolder] = useState(mockUser.bank_account_holder || "")
+  const [username, setUsername] = useState("")
+  const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
+  const [bankName, setBankName] = useState("")
+  const [bankAccountNumber, setBankAccountNumber] = useState("")
+  const [bankAccountHolder, setBankAccountHolder] = useState("")
   
   // Dialog states
   const [depositDialogOpen, setDepositDialogOpen] = useState(false)
@@ -98,37 +87,91 @@ export default function ProfileScreen() {
   }, [initializing])
 
   useEffect(() => {
-    const subscriber = onAuthStateChanged(getAuth(), handleAuthStateChanged)
+    const app = getApp()
+    const auth = getAuth(app)
+    const subscriber = onAuthStateChanged(auth, handleAuthStateChanged)
     return subscriber
   }, [handleAuthStateChanged])
 
-  // Check if any field has been changed
-  const hasChanges = 
-    username !== mockUser.username ||
-    email !== mockUser.email ||
-    phone !== (mockUser.phone || "") ||
-    bankName !== (mockUser.bank_name || "") ||
-    bankAccountNumber !== (mockUser.bank_account_number || "") ||
-    bankAccountHolder !== (mockUser.bank_account_holder || "")
+  // Fetch user data from Firestore when auth user is available
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (authUser?.uid) {
+        try {
+          setLoading(true)
+          const user = await getUserById(authUser.uid)
+          if (user) {
+            setUserData(user)
+            // Initialize form fields with user data
+            setUsername(user.username)
+            setEmail(user.email)
+            setPhone(user.phone || "")
+            setBankName(user.bankName || "")
+            setBankAccountNumber(user.bankAccountNumber || "")
+            setBankAccountHolder(user.bankAccountHolder || "")
+          }
+        } catch (error) {
+          console.error("Error fetching user data:", error)
+          ToastAndroid.show("Không thể tải thông tin người dùng", ToastAndroid.SHORT)
+        } finally {
+          setLoading(false)
+        }
+      } else {
+        setLoading(false)
+      }
+    }
 
-  const handleSave = () => {
-    if (!hasChanges) return
+    if (!initializing) {
+      fetchUserData()
+    }
+  }, [authUser, initializing])
+
+  // Check if any field has been changed
+  const hasChanges = userData && (
+    username !== userData.username ||
+    email !== userData.email ||
+    phone !== (userData.phone || "") ||
+    bankName !== (userData.bankName || "") ||
+    bankAccountNumber !== (userData.bankAccountNumber || "") ||
+    bankAccountHolder !== (userData.bankAccountHolder || "")
+  )
+
+  const handleSave = async () => {
+    if (!hasChanges || !userData || !authUser) return
     
-    // TODO: Implement save functionality with Firebase/API
-    ToastAndroid.show("Đã lưu thông tin thành công", ToastAndroid.SHORT)
-    console.log({
-      username,
-      email,
-      phone,
-      bankName,
-      bankAccountNumber,
-      bankAccountHolder
-    })
+    try {
+      setSaving(true)
+      
+      // Build update object with only defined values
+      const updateData: Partial<User> = {
+        username,
+      }
+      
+      if (phone) updateData.phone = phone
+      if (bankName) updateData.bankName = bankName
+      if (bankAccountNumber) updateData.bankAccountNumber = bankAccountNumber
+      if (bankAccountHolder) updateData.bankAccountHolder = bankAccountHolder
+      
+      await updateUser(authUser.uid, updateData)
+      
+      // Update local state
+      setUserData({
+        ...userData,
+        ...updateData,
+      })
+      
+      ToastAndroid.show("Đã lưu thông tin thành công", ToastAndroid.SHORT)
+    } catch (error) {
+      console.error("Error saving user data:", error)
+      ToastAndroid.show("Lỗi khi lưu thông tin", ToastAndroid.SHORT)
+    } finally {
+      setSaving(false)
+    }
   }
 
   // Debounce QR code generation (only after first generation)
   useEffect(() => {
-    if (!qrGenerated) return // Don't auto-generate on first load
+    if (!qrGenerated || !userData) return // Don't auto-generate on first load
     
     if (!depositAmount || Number.isNaN(Number(depositAmount))) {
       setQrUrl("")
@@ -138,27 +181,29 @@ export default function ProfileScreen() {
     const timer = setTimeout(() => {
       const amount = Number(depositAmount)
       if (amount > 0) {
-        const description = `NAPTIEN ${mockUser.user_id}`
+        const description = `NAPTIEN ${userData.uid}`
         const url = `https://qr.sepay.vn/img?acc=${ADMIN_BANK.account_number}&bank=${ADMIN_BANK.bank_code}&amount=${amount}&des=${description}&template=compact`
         setQrUrl(url)
       }
     }, 500)
 
     return () => clearTimeout(timer)
-  }, [depositAmount, qrGenerated])
+  }, [depositAmount, qrGenerated, userData])
 
   const handleDeposit = () => {
     setDepositDialogOpen(true)
   }
 
   const handleGenerateQR = () => {
+    if (!userData) return
+    
     const amount = Number(depositAmount)
     if (Number.isNaN(amount) || amount <= 0) {
       ToastAndroid.show("Vui lòng nhập số tiền hợp lệ", ToastAndroid.SHORT)
       return
     }
     
-    const description = `NAPTIEN ${mockUser.user_id}`
+    const description = `NAPTIEN ${userData.uid}`
     const url = `https://qr.sepay.vn/img?acc=${ADMIN_BANK.account_number}&bank=${ADMIN_BANK.bank_code}&amount=${amount}&des=${description}&template=compact`
     setQrUrl(url)
     setQrGenerated(true)
@@ -169,12 +214,14 @@ export default function ProfileScreen() {
   }
 
   const handleWithdrawSubmit = () => {
+    if (!userData) return
+    
     const amount = Number(withdrawAmount)
     if (Number.isNaN(amount) || amount <= 0) {
       ToastAndroid.show("Vui lòng nhập số tiền hợp lệ", ToastAndroid.SHORT)
       return
     }
-    if (amount > mockUser.balance) {
+    if (amount > userData.balance) {
       ToastAndroid.show("Số dư không đủ", ToastAndroid.SHORT)
       return
     }
@@ -197,7 +244,25 @@ export default function ProfileScreen() {
     setWithdrawAmount("")
   }
 
-  if (initializing) return null
+  if (initializing || loading) {
+    return (
+      <View className="flex-1 relative justify-center items-center" style={{ backgroundColor: colors.background }}>
+        <Background />
+        <ActivityIndicator size="large" color={colors["lol-gold"]} />
+      </View>
+    )
+  }
+
+  if (!authUser || !userData) {
+    return (
+      <View className="flex-1 relative justify-center items-center" style={{ backgroundColor: colors.background }}>
+        <Background />
+        <Text style={{ color: colors["lol-gold"], fontSize: 16, fontWeight: '600' }}>
+          Vui lòng đăng nhập để xem thông tin
+        </Text>
+      </View>
+    )
+  }
 
   return (
     <View className="flex-1 relative" style={{ backgroundColor: colors.background }}>
@@ -240,7 +305,7 @@ export default function ProfileScreen() {
               {username}
             </Text>
             <Text className="text-sm" style={{ color: colors.mutedForeground }}>
-              ID: {mockUser.user_id}
+              ID: {userData.uid}
             </Text>
             <View className="flex-row items-center gap-2 mt-1">
               <View 
@@ -248,7 +313,7 @@ export default function ProfileScreen() {
                 style={{ backgroundColor: colors.primary }}
               />
               <Text className="text-xs" style={{ color: colors.primary }}>
-                {mockUser.is_active ? "Đang hoạt động" : "Không hoạt động"}
+                {userData.isActive ? "Đang hoạt động" : "Không hoạt động"}
               </Text>
             </View>
           </View>
@@ -274,7 +339,7 @@ export default function ProfileScreen() {
                 Số dư tài khoản
               </Text>
               <Text className="text-2xl font-bold" style={{ color: colors.primary }}>
-                {mockUser.balance.toLocaleString('vi-VN')} ₫
+                {userData.balance.toLocaleString('vi-VN')} ₫
               </Text>
             </View>
             <View className="flex-row gap-2">
@@ -347,19 +412,23 @@ export default function ProfileScreen() {
         <View className="px-4 mt-6 mb-6">
           <TouchableOpacity
             onPress={handleSave}
-            disabled={!hasChanges}
+            disabled={!hasChanges || saving}
             className="flex-row items-center justify-center gap-2 p-4 rounded-lg"
             style={{ 
-              backgroundColor: hasChanges ? colors.primary : colors.muted,
-              opacity: hasChanges ? 1 : 0.5
+              backgroundColor: hasChanges && !saving ? colors.primary : colors.muted,
+              opacity: hasChanges && !saving ? 1 : 0.5
             }}
           >
-            <Save size={20} color={hasChanges ? colors.primaryForeground : colors.mutedForeground} />
+            {saving ? (
+              <ActivityIndicator size="small" color={colors.primaryForeground} />
+            ) : (
+              <Save size={20} color={hasChanges ? colors.primaryForeground : colors.mutedForeground} />
+            )}
             <Text 
               className="text-base font-semibold"
-              style={{ color: hasChanges ? colors.primaryForeground : colors.mutedForeground }}
+              style={{ color: hasChanges && !saving ? colors.primaryForeground : colors.mutedForeground }}
             >
-              Lưu thay đổi
+              {saving ? "Đang lưu..." : "Lưu thay đổi"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -447,7 +516,7 @@ export default function ProfileScreen() {
                     </View>
                     <View className="flex-row justify-between">
                       <Text style={{ color: colors.mutedForeground }}>Nội dung:</Text>
-                      <Text style={{ color: colors.primary }}>NAPTIEN {mockUser.user_id}</Text>
+                      <Text style={{ color: colors.primary }}>NAPTIEN {userData.uid}</Text>
                     </View>
                   </View>
                 </View>
@@ -501,11 +570,11 @@ export default function ProfileScreen() {
                 }}
               />
               <Text className="text-xs mt-2" style={{ color: colors.mutedForeground }}>
-                Số dư khả dụng: {mockUser.balance.toLocaleString('vi-VN')} ₫
+                Số dư khả dụng: {userData.balance.toLocaleString('vi-VN')} ₫
               </Text>
             </View>
 
-            {withdrawAmount && Number(withdrawAmount) > mockUser.balance && (
+            {withdrawAmount && Number(withdrawAmount) > userData.balance && (
               <View 
                 className="p-3 rounded-lg"
                 style={{ backgroundColor: `${colors.destructive}1A` }}
@@ -528,13 +597,13 @@ export default function ProfileScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleWithdrawSubmit}
-                disabled={!withdrawAmount || Number(withdrawAmount) <= 0 || Number(withdrawAmount) > mockUser.balance}
+                disabled={!withdrawAmount || Number(withdrawAmount) <= 0 || Number(withdrawAmount) > userData.balance}
                 className="flex-1 p-3 rounded-lg"
                 style={{ 
-                  backgroundColor: withdrawAmount && Number(withdrawAmount) > 0 && Number(withdrawAmount) <= mockUser.balance 
+                  backgroundColor: withdrawAmount && Number(withdrawAmount) > 0 && Number(withdrawAmount) <= userData.balance 
                     ? colors.primary 
                     : colors.muted,
-                  opacity: withdrawAmount && Number(withdrawAmount) > 0 && Number(withdrawAmount) <= mockUser.balance ? 1 : 0.5
+                  opacity: withdrawAmount && Number(withdrawAmount) > 0 && Number(withdrawAmount) <= userData.balance ? 1 : 0.5
                 }}
               >
                 <Text className="text-center font-semibold" style={{ color: colors.primaryForeground }}>

@@ -10,7 +10,8 @@ import {
 	getAuth,
 	onAuthStateChanged,
 } from "@react-native-firebase/auth";
-import { useEffect, useState } from "react";
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from "react";
 import {
 	ActivityIndicator,
 	ScrollView,
@@ -37,28 +38,37 @@ export default function UserScreen() {
 		return subscriber;
 	}, []);
 
-	// Fetch user data from Firestore when auth user is available
-	useEffect(() => {
-		const fetchUserData = async () => {
-			if (authUser?.uid) {
-				try {
-					setLoading(true);
-					const user = await getUserById(authUser.uid);
-					setUserData(user);
-				} catch (error) {
-					console.error("Error fetching user data:", error);
-				} finally {
-					setLoading(false);
-				}
-			} else {
+	const fetchUserData = useCallback(async () => {
+		if (authUser?.uid) {
+			try {
+				setLoading(true);
+				const user = await getUserById(authUser.uid);
+				setUserData(user);
+			} catch (error) {
+				console.error("Error fetching user data:", error);
+			} finally {
 				setLoading(false);
 			}
-		};
+		} else {
+			setLoading(false);
+		}
+	}, [authUser]);
 
+	// Fetch user data from Firestore when auth user is available
+	useEffect(() => {
 		if (!initializing) {
 			fetchUserData();
 		}
-	}, [authUser, initializing]);
+	}, [initializing, fetchUserData]);
+
+	// Refetch data when tab is focused
+	useFocusEffect(
+		useCallback(() => {
+			if (authUser?.uid) {
+				fetchUserData();
+			}
+		}, [authUser, fetchUserData])
+	);
 
 	if (initializing || loading) {
 		return (
@@ -124,13 +134,6 @@ export default function UserScreen() {
 							<Text style={styles.detailValue}>{userData.email}</Text>
 						</View>
 
-						{userData.phone && (
-							<View style={styles.detailRow}>
-								<Text style={styles.detailLabel}>Số điện thoại:</Text>
-								<Text style={styles.detailValue}>{userData.phone}</Text>
-							</View>
-						)}
-
 						<View style={styles.detailRow}>
 							<Text style={styles.detailLabel}>Vai trò:</Text>
 							<View style={styles.roleBadge}>
@@ -139,33 +142,6 @@ export default function UserScreen() {
 								</Text>
 							</View>
 						</View>
-
-						{userData.bankName && (
-							<>
-								<View style={styles.divider} />
-								<Text style={styles.sectionTitle}>Thông tin ngân hàng</Text>
-								<View style={styles.detailRow}>
-									<Text style={styles.detailLabel}>Ngân hàng:</Text>
-									<Text style={styles.detailValue}>{userData.bankName}</Text>
-								</View>
-								{userData.bankAccountNumber && (
-									<View style={styles.detailRow}>
-										<Text style={styles.detailLabel}>Số tài khoản:</Text>
-										<Text style={styles.detailValue}>
-											{userData.bankAccountNumber}
-										</Text>
-									</View>
-								)}
-								{userData.bankAccountHolder && (
-									<View style={styles.detailRow}>
-										<Text style={styles.detailLabel}>Chủ tài khoản:</Text>
-										<Text style={styles.detailValue}>
-											{userData.bankAccountHolder}
-										</Text>
-									</View>
-								)}
-							</>
-						)}
 					</View>
 				</View>
 
@@ -227,7 +203,7 @@ const styles = StyleSheet.create({
 		overflow: "hidden",
 	},
 	balanceSection: {
-		padding: 20,
+		padding: 8,
 		backgroundColor: `${colors["lol-gold"]}0D`,
 		alignItems: "center",
 	},
