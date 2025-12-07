@@ -49,9 +49,9 @@ export interface LolAccount {
 	sellerId: string;
 	// Required
 	title: string;
-	level: number;
 	thumbnailUrl: string;
 	// Optional
+	level?: number;
 	ingameName?: string;
 	description?: string;
 	server?: string;

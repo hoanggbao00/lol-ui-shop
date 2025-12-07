@@ -45,19 +45,34 @@ export const createAccount = async (data: CreateAccountPayload) => {
 	const db = getFirestore(app);
 	const accountsRef = collection(db, ACCOUNTS_COLL);
 
-	const newAccount = {
-		...data,
+	// Loại bỏ các field có giá trị undefined (Firestore không chấp nhận undefined)
+	const cleanData: any = {
 		sellerId: currentUser.uid,
 		status: "available" as AccountStatus,
 		createdAt: serverTimestamp(),
-		// Đảm bảo các trường optional không bị undefined gây lỗi
-		ingameName: data.ingameName || null,
-		description: data.description || "",
-		soloRank: data.soloRank || null,
-		flexRank: data.flexRank || null,
+		title: data.title,
 	};
 
-	await addDoc(accountsRef, newAccount);
+	// Chỉ thêm các field không undefined
+	if (data.level !== undefined) cleanData.level = data.level;
+	if (data.ingameName) cleanData.ingameName = data.ingameName;
+	if (data.description) cleanData.description = data.description;
+	if (data.server) cleanData.server = data.server;
+	if (data.region) cleanData.region = data.region;
+	if (data.champCount !== undefined) cleanData.champCount = data.champCount;
+	if (data.skinCount !== undefined) cleanData.skinCount = data.skinCount;
+	if (data.soloRank) cleanData.soloRank = data.soloRank;
+	if (data.flexRank) cleanData.flexRank = data.flexRank;
+	if (data.loginUsername) cleanData.loginUsername = data.loginUsername;
+	if (data.loginPassword) cleanData.loginPassword = data.loginPassword;
+	if (data.buyPrice !== undefined) cleanData.buyPrice = data.buyPrice;
+	if (data.rentPricePerHour !== undefined) cleanData.rentPricePerHour = data.rentPricePerHour;
+	if (data.thumbnailUrl) cleanData.thumbnailUrl = data.thumbnailUrl;
+
+	console.log('Creating account with data:', cleanData);
+	const docRef = await addDoc(accountsRef, cleanData);
+	console.log('Account created with ID:', docRef.id);
+	return docRef.id;
 };
 
 /**

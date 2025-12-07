@@ -1,23 +1,28 @@
+import { createAccount } from '@/actions/account.action';
 import Background from "@/components/Background";
+import RankSelector from "@/components/RankSelector";
+import Select from "@/components/Select";
 import { colors } from "@/libs/colors";
-import Ionicons from "@expo/vector-icons/Ionicons";
+import { uploadImageToStorage } from '@/libs/upload';
 import { Image } from "expo-image";
+import * as ImagePicker from 'expo-image-picker';
 import { router } from "expo-router";
 import {
-  ArrowLeft,
-  Plus,
-  Upload,
-  X
+	ArrowLeft,
+	Plus,
+	Upload,
+	X
 } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  ToastAndroid,
-  TouchableOpacity,
-  View
+	ActivityIndicator,
+	ScrollView,
+	StyleSheet,
+	Text,
+	TextInput,
+	ToastAndroid,
+	TouchableOpacity,
+	View
 } from "react-native";
 
 const ranks = [
@@ -43,6 +48,9 @@ interface FormData {
 	honorLevel: string;
 	masteryPoints: string;
 	region: string;
+	// Login credentials
+	loginUsername: string;
+	loginPassword: string;
 	// Ranks
 	soloRank: string;
 	soloDivision: string;
@@ -62,65 +70,14 @@ interface FormData {
 	description: string;
 }
 
-// Custom Select Component
-interface SelectProps {
-	value: string;
-	placeholder: string;
-	options: { value: string; label: string }[];
-	onValueChange: (value: string) => void;
-	style?: object;
-}
-
-const Select = ({ value, placeholder, options, onValueChange, style }: SelectProps) => {
-	const [isOpen, setIsOpen] = useState(false);
-
-	const displayValue = value
-		? options.find((option) => option.value === value)?.label
-		: placeholder;
-
-	return (
-		<View style={[{ position: "relative" }, style]}>
-			<TouchableOpacity
-				style={styles.selectButton}
-				onPress={() => setIsOpen(!isOpen)}
-			>
-				<Text style={styles.selectButtonText}>{displayValue}</Text>
-				<Ionicons name="chevron-down" size={20} color={colors.mutedForeground} />
-			</TouchableOpacity>
-			{isOpen && (
-				<View style={styles.selectDropdown}>
-					<ScrollView 
-						style={{ maxHeight: 200 }}
-						nestedScrollEnabled={true}
-						showsVerticalScrollIndicator={true}
-					>
-						{options.map((option) => (
-							<TouchableOpacity
-								key={option.value}
-								style={styles.selectOption}
-								onPress={() => {
-									onValueChange(option.value);
-									setIsOpen(false);
-								}}
-								activeOpacity={0.7}
-							>
-								<Text style={styles.selectOptionText}>{option.label}</Text>
-								{value === option.value && (
-									<Ionicons name="checkmark" size={20} color={colors.primary} />
-								)}
-							</TouchableOpacity>
-						))}
-					</ScrollView>
-				</View>
-			)}
-		</View>
-	);
-};
 
 export default function NewAccountPage() {
 	const [forSale, setForSale] = useState(true);
 	const [forRent, setForRent] = useState(false);
 	const [image, setImage] = useState<string | null>(null);
+	const [uploading, setUploading] = useState(false);
+	const [submitting, setSubmitting] = useState(false);
+
 	const [formData, setFormData] = useState<FormData>({
 		username: "",
 		title: "",
@@ -133,6 +90,9 @@ export default function NewAccountPage() {
 		honorLevel: "",
 		masteryPoints: "",
 		region: "",
+		// Login credentials
+		loginUsername: "",
+		loginPassword: "",
 		// Ranks
 		soloRank: "",
 		soloDivision: "",
@@ -152,84 +112,212 @@ export default function NewAccountPage() {
 		description: "",
 	});
 
-	const handleImageUpload = () => {
-		const mockImage = "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=400&h=400&fit=crop";
-		setImage(mockImage);
-		ToastAndroid.show("Đã thêm ảnh", ToastAndroid.SHORT);
-	};
+	const pickImages = async () => {
+    // Xin quyền truy cập (Quan trọng với Android 13+)
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      ToastAndroid.show('Quyền bị từ chối', ToastAndroid.SHORT);
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: false, // Cho phép chọn nhiều ảnh
+      quality: 0.7, // Nén ảnh nhẹ bớt (0.0 - 1.0)
+    });
+
+    if (!result.canceled) {
+      // Lấy danh sách uri
+      const uris = result.assets.map(asset => asset.uri);
+      setImage(uris[0]);
+    }
+  };
 
 	const removeImage = () => {
 		setImage(null);
 	};
 
-	const handleSubmit = () => {
+	const validateForm = (): string | null => {
+		// Validate image
+		// if (!image) {
+		// 	return "Vui lòng chọn ảnh tài khoản";
+		// }
+
+		// Validate username
+		if (!formData.username.trim()) {
+			return "Vui lòng nhập tên tài khoản";
+		}
+
+		// Validate login credentials
+		if (!formData.loginUsername.trim()) {
+			return "Vui lòng nhập tên đăng nhập";
+		}
+
+		if (!formData.loginPassword.trim()) {
+			return "Vui lòng nhập mật khẩu đăng nhập";
+		}
+
+		// Validate listing type
 		if (!forSale && !forRent) {
-			ToastAndroid.show("Vui lòng chọn ít nhất một hình thức: Bán hoặc Cho thuê", ToastAndroid.LONG);
+			return "Vui lòng chọn ít nhất một hình thức: Bán hoặc Cho thuê";
+		}
+
+		// Validate pricing
+		if (forSale && !formData.price.trim()) {
+			return "Vui lòng nhập giá bán";
+		}
+
+		if (forRent && !formData.rentPricePerHour.trim()) {
+			return "Vui lòng nhập giá thuê";
+		}
+
+		return null;
+	};
+
+	const handleSubmit = async () => {
+		console.log('=== SUBMIT STARTED ===');
+		
+		// Validate form
+		const error = validateForm();
+		if (error) {
+			console.log('Validation error:', error);
+			ToastAndroid.show(error, ToastAndroid.LONG);
 			return;
 		}
 
-		const listingTypes = [];
-		if (forSale) listingTypes.push("bán");
-		if (forRent) listingTypes.push("cho thuê");
+		console.log('Validation passed');
+		setSubmitting(true);
+		
+		try {
+			// 1. Upload image first
+			setUploading(true);
+			// if (!image) {
+			// 	throw new Error('No image selected');
+			// }
+			console.log('Starting image upload...');
+			// const thumbnailUrl = await uploadImageToStorage(image, 'account_images');
+			setUploading(false);
 
-		ToastAndroid.show(`Đăng tin thành công! Tài khoản đã được đăng ${listingTypes.join(" và ")}`, ToastAndroid.LONG);
+			// 2. Prepare rank data
+			console.log('Preparing rank data...');
+			const soloRank = formData.soloRank && formData.soloDivision ? {
+				tier: formData.soloRank,
+				division: formData.soloDivision,
+				lp: Number(formData.soloLP) || 0,
+				wins: Number(formData.soloWins) || 0,
+			} : undefined;
+
+			const flexRank = formData.flexRank && formData.flexDivision ? {
+				tier: formData.flexRank,
+				division: formData.flexDivision,
+				lp: Number(formData.flexLP) || 0,
+				wins: Number(formData.flexWins) || 0,
+			} : undefined;
+
+			// 3. Create account data
+			console.log('Preparing account data...');
+			const accountData = {
+				title: formData.title.trim() || formData.username.trim(),
+				level: formData.level ? Number(formData.level) : undefined,
+				ingameName: formData.username.trim(),
+				description: formData.description.trim(),
+				server: undefined,
+				region: formData.region || undefined,
+				champCount: formData.champions ? Number(formData.champions) : undefined,
+				skinCount: formData.skins ? Number(formData.skins) : undefined,
+				soloRank,
+				flexRank,
+				loginUsername: formData.loginUsername.trim(),
+				loginPassword: formData.loginPassword.trim(),
+				buyPrice: forSale && formData.price ? Number(formData.price.replace(/,/g, '')) : undefined,
+				rentPricePerHour: forRent && formData.rentPricePerHour ? Number(formData.rentPricePerHour.replace(/,/g, '')) : undefined,
+			};
+
+			console.log('Account data prepared:', JSON.stringify(accountData, null, 2));
+
+			// 4. Call API to create account
+			console.log('Calling createAccount API...');
+			const accountId = await createAccount(accountData);
+			console.log('Account created successfully with ID:', accountId);
+
+			// 5. Show success message
+			const listingTypes = [];
+			if (forSale) listingTypes.push("bán");
+			if (forRent) listingTypes.push("cho thuê");
+
+			ToastAndroid.show(`Đăng tin thành công! Tài khoản đã được đăng ${listingTypes.join(" và ")}`, ToastAndroid.LONG);
+			
+			// 6. Navigate back
+			console.log('Navigating back...');
+			router.back();
+		} catch (error: any) {
+			console.error('=== ERROR IN SUBMIT ===');
+			console.error('Error details:', error);
+			console.error('Error message:', error?.message);
+			console.error('Error stack:', error?.stack);
+			const errorMessage = error?.message || 'Có lỗi xảy ra. Vui lòng thử lại.';
+			ToastAndroid.show(errorMessage, ToastAndroid.LONG);
+		} finally {
+			console.log('=== SUBMIT FINISHED ===');
+			setSubmitting(false);
+			setUploading(false);
+		}
 	};
 
-	const rankOptions = ranks.map((rank) => ({ value: rank.toLowerCase(), label: rank }));
-	const divisionOptions = divisions.map((div) => ({ value: div, label: div }));
-	const regionOptions = regions.map((region) => ({ value: region.toLowerCase(), label: region }));
+	const rankOptions = useMemo(() => ranks.map((rank) => ({ value: rank.toLowerCase(), label: rank })), []);
+	const divisionOptions = useMemo(() => divisions.map((div) => ({ value: div, label: div })), []);
+	const regionOptions = useMemo(() => regions.map((region) => ({ value: region.toLowerCase(), label: region })), []);
 
-	const RankSelector = ({
-		label,
-		rankKey,
-		divisionKey,
-		lpKey,
-		winsKey
-	}: {
-		label: string;
-		rankKey: keyof FormData;
-		divisionKey: keyof FormData;
-		lpKey: keyof FormData;
-		winsKey: keyof FormData;
-	}) => (
-		<View style={styles.rankSelector}>
-			<Text style={styles.rankSelectorLabel}>{label}</Text>
-			<View style={styles.rankRow}>
-				<Select
-					value={formData[rankKey]}
-					placeholder="Rank"
-					options={rankOptions}
-					onValueChange={(value) => setFormData({ ...formData, [rankKey]: value })}
-					style={{ flex: 1 }}
-				/>
-				<Select
-					value={formData[divisionKey]}
-					placeholder="Division"
-					options={divisionOptions}
-					onValueChange={(value) => setFormData({ ...formData, [divisionKey]: value })}
-					style={{ flex: 1 }}
-				/>
-			</View>
-			<View style={styles.rankRow}>
-				<TextInput
-					style={styles.input}
-					placeholder="LP"
-					placeholderTextColor={colors.mutedForeground}
-					keyboardType="numeric"
-					value={formData[lpKey]}
-					onChangeText={(value) => setFormData({ ...formData, [lpKey]: value })}
-				/>
-				<TextInput
-					style={styles.input}
-					placeholder="Wins"
-					placeholderTextColor={colors.mutedForeground}
-					keyboardType="numeric"
-					value={formData[winsKey]}
-					onChangeText={(value) => setFormData({ ...formData, [winsKey]: value })}
-				/>
-			</View>
-		</View>
-	);
+	// Solo Rank handlers
+	const handleSoloRankChange = useCallback((value: string) => {
+		setFormData(prev => ({ ...prev, soloRank: value }));
+	}, []);
+
+	const handleSoloDivisionChange = useCallback((value: string) => {
+		setFormData(prev => ({ ...prev, soloDivision: value }));
+	}, []);
+
+	const handleSoloLPChange = useCallback((value: string) => {
+		setFormData(prev => ({ ...prev, soloLP: value }));
+	}, []);
+
+	const handleSoloWinsChange = useCallback((value: string) => {
+		setFormData(prev => ({ ...prev, soloWins: value }));
+	}, []);
+
+	// Flex Rank handlers
+	const handleFlexRankChange = useCallback((value: string) => {
+		setFormData(prev => ({ ...prev, flexRank: value }));
+	}, []);
+
+	const handleFlexDivisionChange = useCallback((value: string) => {
+		setFormData(prev => ({ ...prev, flexDivision: value }));
+	}, []);
+
+	const handleFlexLPChange = useCallback((value: string) => {
+		setFormData(prev => ({ ...prev, flexLP: value }));
+	}, []);
+
+	const handleFlexWinsChange = useCallback((value: string) => {
+		setFormData(prev => ({ ...prev, flexWins: value }));
+	}, []);
+
+	// TFT Rank handlers
+	const handleTftRankChange = useCallback((value: string) => {
+		setFormData(prev => ({ ...prev, tftRank: value }));
+	}, []);
+
+	const handleTftDivisionChange = useCallback((value: string) => {
+		setFormData(prev => ({ ...prev, tftDivision: value }));
+	}, []);
+
+	const handleTftLPChange = useCallback((value: string) => {
+		setFormData(prev => ({ ...prev, tftLP: value }));
+	}, []);
+
+	const handleTftWinsChange = useCallback((value: string) => {
+		setFormData(prev => ({ ...prev, tftWins: value }));
+	}, []);
 
 	return (
 		<View style={styles.container}>
@@ -278,7 +366,7 @@ export default function NewAccountPage() {
 
 				{/* Image Upload */}
 				<View style={styles.section}>
-					<Text style={styles.sectionLabel}>Ảnh tài khoản</Text>
+					<Text style={styles.sectionLabel}>Ảnh tài khoản <Text style={styles.required}>*</Text></Text>
 					<View style={styles.imageUploadContainer}>
 						{image ? (
 							<View style={styles.imagePreview}>
@@ -297,7 +385,7 @@ export default function NewAccountPage() {
 						) : (
 							<TouchableOpacity
 								style={styles.uploadButton}
-								onPress={handleImageUpload}
+								onPress={pickImages}
 							>
 								<Upload size={24} color={colors.mutedForeground} />
 								<Text style={styles.uploadButtonText}>Thêm ảnh</Text>
@@ -311,7 +399,7 @@ export default function NewAccountPage() {
 					<Text style={styles.sectionTitle}>Thông tin cơ bản</Text>
 
 					<View style={styles.fieldGroup}>
-						<Text style={styles.fieldLabel}>Tên tài khoản</Text>
+						<Text style={styles.fieldLabel}>Tên tài khoản <Text style={styles.required}>*</Text></Text>
 						<TextInput
 							style={styles.textInput}
 							placeholder="VD: mid24"
@@ -378,6 +466,35 @@ export default function NewAccountPage() {
 								onValueChange={(value) => setFormData({ ...formData, region: value })}
 							/>
 						</View>
+					</View>
+				</View>
+
+				{/* Login Credentials */}
+				<View style={styles.section}>
+					<Text style={styles.sectionTitle}>Thông tin đăng nhập</Text>
+
+					<View style={styles.fieldGroup}>
+						<Text style={styles.fieldLabel}>Tên đăng nhập <Text style={styles.required}>*</Text></Text>
+						<TextInput
+							style={styles.textInput}
+							placeholder="Tên đăng nhập tài khoản LOL"
+							placeholderTextColor={colors.mutedForeground}
+							value={formData.loginUsername}
+							onChangeText={(value) => setFormData({ ...formData, loginUsername: value })}
+							autoCapitalize="none"
+						/>
+					</View>
+
+					<View style={styles.fieldGroup}>
+						<Text style={styles.fieldLabel}>Mật khẩu <Text style={styles.required}>*</Text></Text>
+						<TextInput
+							style={styles.textInput}
+							placeholder="Mật khẩu đăng nhập"
+							placeholderTextColor={colors.mutedForeground}
+							value={formData.loginPassword}
+							onChangeText={(value) => setFormData({ ...formData, loginPassword: value })}
+							secureTextEntry
+						/>
 					</View>
 				</View>
 
@@ -459,26 +576,44 @@ export default function NewAccountPage() {
 
 					<RankSelector
 						label="Đơn/Đôi (Solo/Duo)"
-						rankKey="soloRank"
-						divisionKey="soloDivision"
-						lpKey="soloLP"
-						winsKey="soloWins"
+						rank={formData.soloRank}
+						division={formData.soloDivision}
+						lp={formData.soloLP}
+						wins={formData.soloWins}
+						rankOptions={rankOptions}
+						divisionOptions={divisionOptions}
+						onRankChange={handleSoloRankChange}
+						onDivisionChange={handleSoloDivisionChange}
+						onLPChange={handleSoloLPChange}
+						onWinsChange={handleSoloWinsChange}
 					/>
 
 					<RankSelector
 						label="Linh Hoạt 5v5 (Flex)"
-						rankKey="flexRank"
-						divisionKey="flexDivision"
-						lpKey="flexLP"
-						winsKey="flexWins"
+						rank={formData.flexRank}
+						division={formData.flexDivision}
+						lp={formData.flexLP}
+						wins={formData.flexWins}
+						rankOptions={rankOptions}
+						divisionOptions={divisionOptions}
+						onRankChange={handleFlexRankChange}
+						onDivisionChange={handleFlexDivisionChange}
+						onLPChange={handleFlexLPChange}
+						onWinsChange={handleFlexWinsChange}
 					/>
 
 					<RankSelector
 						label="ĐTCL (TFT)"
-						rankKey="tftRank"
-						divisionKey="tftDivision"
-						lpKey="tftLP"
-						winsKey="tftWins"
+						rank={formData.tftRank}
+						division={formData.tftDivision}
+						lp={formData.tftLP}
+						wins={formData.tftWins}
+						rankOptions={rankOptions}
+						divisionOptions={divisionOptions}
+						onRankChange={handleTftRankChange}
+						onDivisionChange={handleTftDivisionChange}
+						onLPChange={handleTftLPChange}
+						onWinsChange={handleTftWinsChange}
 					/>
 				</View>
 
@@ -536,11 +671,23 @@ export default function NewAccountPage() {
 
 				{/* Submit Button */}
 				<TouchableOpacity
-					style={styles.submitButton}
+					style={[styles.submitButton, (submitting || uploading) && styles.submitButtonDisabled]}
 					onPress={handleSubmit}
+					disabled={submitting || uploading}
 				>
-					<Plus size={20} color={colors.primaryForeground} />
-					<Text style={styles.submitButtonText}>Đăng tin</Text>
+					{submitting || uploading ? (
+						<>
+							<ActivityIndicator size="small" color={colors.primaryForeground} />
+							<Text style={styles.submitButtonText}>
+								{uploading ? 'Đang tải ảnh...' : 'Đang đăng tin...'}
+							</Text>
+						</>
+					) : (
+						<>
+							<Plus size={20} color={colors.primaryForeground} />
+							<Text style={styles.submitButtonText}>Đăng tin</Text>
+						</>
+					)}
 				</TouchableOpacity>
 
 				{/* Bottom Spacer */}
@@ -711,79 +858,6 @@ const styles = StyleSheet.create({
 		flex: 1,
 		gap: 8,
 	},
-	selectButton: {
-		backgroundColor: `${colors.muted}4D`,
-		borderWidth: 1,
-		borderColor: `${colors.border}80`,
-		borderRadius: 8,
-		paddingHorizontal: 12,
-		paddingVertical: 10,
-		flexDirection: "row",
-		justifyContent: "space-between",
-		alignItems: "center",
-	},
-	selectButtonText: {
-		fontSize: 14,
-		color: colors.foreground,
-	},
-	selectDropdown: {
-		position: "absolute",
-		top: "100%",
-		left: 0,
-		right: 0,
-		backgroundColor: colors.card,
-		borderRadius: 8,
-		borderWidth: 1,
-		borderColor: `${colors.border}80`,
-		marginTop: 4,
-		zIndex: 1000,
-		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.25,
-		shadowRadius: 4,
-		elevation: 5,
-		overflow: "hidden",
-	},
-	selectOption: {
-		flexDirection: "row",
-		justifyContent: "space-between",
-		alignItems: "center",
-		paddingHorizontal: 12,
-		paddingVertical: 12,
-		borderBottomWidth: 1,
-		borderBottomColor: `${colors.border}40`,
-		backgroundColor: colors.card,
-	},
-	selectOptionText: {
-		fontSize: 14,
-		color: colors.foreground,
-	},
-	rankSelector: {
-		backgroundColor: `${colors.muted}33`,
-		borderRadius: 12,
-		padding: 12,
-		gap: 12,
-	},
-	rankSelectorLabel: {
-		fontSize: 14,
-		fontWeight: "500",
-		color: colors.foreground,
-	},
-	rankRow: {
-		flexDirection: "row",
-		gap: 12,
-	},
-	input: {
-		flex: 1,
-		backgroundColor: `${colors.muted}4D`,
-		borderWidth: 1,
-		borderColor: `${colors.border}80`,
-		borderRadius: 8,
-		paddingHorizontal: 12,
-		paddingVertical: 10,
-		fontSize: 14,
-		color: colors.foreground,
-	},
 	helperText: {
 		fontSize: 14,
 		color: colors.mutedForeground,
@@ -797,9 +871,16 @@ const styles = StyleSheet.create({
 		paddingVertical: 16,
 		borderRadius: 12,
 	},
+	submitButtonDisabled: {
+		opacity: 0.6,
+	},
 	submitButtonText: {
 		fontSize: 16,
 		fontWeight: "600",
 		color: colors.primaryForeground,
+	},
+	required: {
+		color: colors.destructive,
+		fontSize: 14,
 	},
 });

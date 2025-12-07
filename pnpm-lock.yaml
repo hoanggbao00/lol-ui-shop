@@ -29,6 +29,9 @@ importers:
       '@react-native-firebase/firestore':
         specifier: ^23.5.0
         version: 23.5.0(@react-native-firebase/app@23.5.0(expo@54.0.13)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.17)(react@19.1.0))
+      '@react-native-firebase/storage':
+        specifier: ^23.5.0
+        version: 23.5.0(@react-native-firebase/app@23.5.0(expo@54.0.13)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))
       '@react-navigation/bottom-tabs':
         specifier: ^7.4.0
         version: 7.4.9(@react-navigation/native@7.1.18(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native-safe-area-context@5.6.0(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native-screens@4.16.0(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
@@ -1602,6 +1605,11 @@ packages:
 
   '@react-native-firebase/firestore@23.5.0':
     resolution: {integrity: sha512-eazEyJAd1BD47NXeOWU+YUilzHN4zY7YrE0pzevBIBCH4DaLqhH678TZpulMAh0SENkZA8MKBfxkkvqGyAGCsQ==}
+    peerDependencies:
+      '@react-native-firebase/app': 23.5.0
+
+  '@react-native-firebase/storage@23.5.0':
+    resolution: {integrity: sha512-ShWZaV1AHD7apKvnilzYKBZBX5jq5jfhQfN4tO+abIS76GEtU91y5z/Kv92IJjqIT9cbKg4dFD5DTRSxy1IFxw==}
     peerDependencies:
       '@react-native-firebase/app': 23.5.0
 
@@ -7986,6 +7994,10 @@ snapshots:
       react-native-url-polyfill: 2.0.0(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.17)(react@19.1.0))
     transitivePeerDependencies:
       - react-native
+
+  '@react-native-firebase/storage@23.5.0(@react-native-firebase/app@23.5.0(expo@54.0.13)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))':
+    dependencies:
+      '@react-native-firebase/app': 23.5.0(expo@54.0.13)(react-native@0.81.4(@babel/core@7.28.4)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
 
   '@react-native/assets-registry@0.81.4': {}
 
