@@ -14,6 +14,7 @@ interface ProfileAvatarProps {
 export default function ProfileAvatar({
 	username,
 	userId,
+	avatarUrl,
 }: ProfileAvatarProps) {
 	return (
 		<View
@@ -26,6 +27,8 @@ export default function ProfileAvatar({
 			<View
 				style={{
 					position: "relative",
+					width: 140,
+					height: 140,
 				}}
 			>
 				<Image
@@ -55,7 +58,7 @@ export default function ProfileAvatar({
 				style={{
 					fontSize: 16,
 					color: colors["lol-gold"],
-					fontWeight: "600",
+					fontFamily: "Inter_600SemiBold",
 				}}
 			>
 				ID: {userId}

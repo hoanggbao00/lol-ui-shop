@@ -6,9 +6,9 @@ import { colors } from "@/libs/colors";
 import type { User } from "@/types";
 import { getApp } from "@react-native-firebase/app";
 import {
-	type FirebaseAuthTypes,
 	getAuth,
 	onAuthStateChanged,
+	type FirebaseAuthTypes,
 } from "@react-native-firebase/auth";
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from "react";

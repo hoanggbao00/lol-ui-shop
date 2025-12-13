@@ -1,5 +1,6 @@
 export interface Item {
   id: number
+  firestoreId?: string // Firestore document ID gốc
   name: string
   description: string
   rank: string

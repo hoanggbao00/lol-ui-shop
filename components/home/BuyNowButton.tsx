@@ -5,20 +5,20 @@ import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 
 interface BuyNowButtonProps {
 	onPress?: () => void;
+	text?: string;
 }
 
 export default function BuyNowButton(props: BuyNowButtonProps) {
-	const { onPress } = props;
+	const { onPress, text = "MUA NGAY" } = props;
 
 	return (
 		<TouchableOpacity onPress={onPress}>
 			<View style={styles.container}>
 				<Svg
-					width="413"
-					height="128"
+					width={413 / 4.5}
+					height={128 / 4.5}
 					viewBox="0 0 413 128"
 					fill="none"
-					style={styles.svgStyles}
 				>
 					<Path
 						d="M413 31.3105L377.274 63.4414L413 95.5713V128H0V95.5752L35.7256 63.4453L0 31.3145V0H413V31.3105Z"
@@ -39,7 +39,7 @@ export default function BuyNowButton(props: BuyNowButtonProps) {
 					</Defs>
 				</Svg>
 
-				<Text style={styles.text}>MUA NGAY</Text>
+				<Text style={styles.text}>{text}</Text>
 			</View>
 		</TouchableOpacity>
 	);
@@ -47,20 +47,15 @@ export default function BuyNowButton(props: BuyNowButtonProps) {
 
 const styles = StyleSheet.create({
 	container: {
-		padding: 10,
-		borderRadius: 10,
 		position: "relative",
-		paddingRight: 20,
-	},
-	svgStyles: {
-		position: "absolute",
-		left: -155,
-		top: -45,
-		transform: [{ scale: 0.3 }],
 	},
 	text: {
+		position: "absolute",
+		left: "50%",
+		top: "50%",
+		transform: [{ translateX: "-50%" }, { translateY: "-50%" }],
 		color: "black",
 		fontSize: 16,
-		fontWeight: "bold",
+		fontFamily: "Inter_600SemiBold",
 	},
 });
