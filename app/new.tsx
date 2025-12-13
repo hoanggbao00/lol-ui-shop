@@ -60,10 +60,6 @@ interface FormData {
 	flexDivision: string;
 	flexLP: string;
 	flexWins: string;
-	tftRank: string;
-	tftDivision: string;
-	tftLP: string;
-	tftWins: string;
 	// Pricing
 	price: string;
 	rentPricePerHour: string;
@@ -103,10 +99,6 @@ export default function NewAccountPage() {
 		flexDivision: "",
 		flexLP: "",
 		flexWins: "",
-		tftRank: "",
-		tftDivision: "",
-		tftLP: "",
-		tftWins: "",
 		// Pricing
 		price: "",
 		rentPricePerHour: "",
@@ -219,12 +211,6 @@ export default function NewAccountPage() {
 				wins: Number(formData.flexWins) || 0,
 			} : undefined;
 
-			const tftRank = formData.tftRank && formData.tftDivision ? {
-				tier: formData.tftRank,
-				division: formData.tftDivision,
-				lp: Number(formData.tftLP) || 0,
-				wins: Number(formData.tftWins) || 0,
-			} : undefined;
 
 			// 3. Create account data
 			const accountData: any = {
@@ -243,7 +229,6 @@ export default function NewAccountPage() {
 				masteryPoints: formData.masteryPoints ? Number(formData.masteryPoints) : undefined,
 				soloRank,
 				flexRank,
-				tftRank,
 				loginUsername: formData.loginUsername.trim(),
 				loginPassword: formData.loginPassword.trim(),
 				buyPrice: forSale && formData.price ? Number(formData.price.replace(/,/g, '')) : undefined,
@@ -316,23 +301,6 @@ export default function NewAccountPage() {
 
 	const handleFlexWinsChange = useCallback((value: string) => {
 		setFormData(prev => ({ ...prev, flexWins: value }));
-	}, []);
-
-	// TFT Rank handlers
-	const handleTftRankChange = useCallback((value: string) => {
-		setFormData(prev => ({ ...prev, tftRank: value }));
-	}, []);
-
-	const handleTftDivisionChange = useCallback((value: string) => {
-		setFormData(prev => ({ ...prev, tftDivision: value }));
-	}, []);
-
-	const handleTftLPChange = useCallback((value: string) => {
-		setFormData(prev => ({ ...prev, tftLP: value }));
-	}, []);
-
-	const handleTftWinsChange = useCallback((value: string) => {
-		setFormData(prev => ({ ...prev, tftWins: value }));
 	}, []);
 
 	return (
@@ -616,20 +584,6 @@ export default function NewAccountPage() {
 						onDivisionChange={handleFlexDivisionChange}
 						onLPChange={handleFlexLPChange}
 						onWinsChange={handleFlexWinsChange}
-					/>
-
-					<RankSelector
-						label="ĐTCL (TFT)"
-						rank={formData.tftRank}
-						division={formData.tftDivision}
-						lp={formData.tftLP}
-						wins={formData.tftWins}
-						rankOptions={rankOptions}
-						divisionOptions={divisionOptions}
-						onRankChange={handleTftRankChange}
-						onDivisionChange={handleTftDivisionChange}
-						onLPChange={handleTftLPChange}
-						onWinsChange={handleTftWinsChange}
 					/>
 				</View>
 

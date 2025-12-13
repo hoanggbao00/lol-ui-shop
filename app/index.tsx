@@ -148,7 +148,7 @@ export default function SignIn() {
 				</TouchableOpacity>
 
 				{/* Forgot password link */}
-				<TouchableOpacity
+				{/* <TouchableOpacity
 					style={{
 						marginBottom: 32,
 					}}
@@ -162,7 +162,7 @@ export default function SignIn() {
 					>
 						Quên mật khẩu?
 					</Text>
-				</TouchableOpacity>
+				</TouchableOpacity> */}
 
 				{/* Social login options */}
 				<View

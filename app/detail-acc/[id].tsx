@@ -109,6 +109,7 @@ export default function DetailAcc() {
 	const [authUser, setAuthUser] = useState<FirebaseAuthTypes.User | null>(null);
 	const [userData, setUserData] = useState<any>(null);
 	const [isOwnerOrAdmin, setIsOwnerOrAdmin] = useState(false);
+	const [isOwner, setIsOwner] = useState(false);
 	const [reclaiming, setReclaiming] = useState(false);
 	const [paymentMethod, setPaymentMethod] = useState<"qr" | "balance" | null>(null);
 	const [showAccountInfo, setShowAccountInfo] = useState(false);
@@ -138,9 +139,33 @@ export default function DetailAcc() {
 			if (authUser?.uid) {
 				const user = await getUserById(authUser.uid);
 				setUserData(user);
-				const isOwner = accountData.sellerId === authUser.uid;
+				const isOwnerCheck = accountData.sellerId === authUser.uid;
 				const isAdmin = user?.role === "admin";
-				setIsOwnerOrAdmin(isOwner || isAdmin);
+				setIsOwner(isOwnerCheck);
+				setIsOwnerOrAdmin(isOwnerCheck || isAdmin);
+				
+				// Check if user has purchased/rented this account
+				// If yes, fetch and display credentials
+				if (!isOwner && !isAdmin) {
+					try {
+						const credentials = await getAccountCredentials(id);
+						if (credentials) {
+							setAccountCredentials(credentials);
+						}
+					} catch (err: any) {
+						// User hasn't purchased/rented this account, or error occurred
+						// Silently fail - credentials will remain null
+						console.log("User doesn't have access to credentials:", err.message);
+					}
+				} else if (isOwner || isAdmin) {
+					// Owner/Admin can see credentials directly from account data
+					if (accountData.loginUsername && accountData.loginPassword) {
+						setAccountCredentials({
+							username: accountData.loginUsername,
+							password: accountData.loginPassword,
+						});
+					}
+				}
 			}
 		} catch (err: any) {
 			console.error("Error fetching account:", err);
@@ -746,12 +771,32 @@ export default function DetailAcc() {
 					</View>
 				</View>
 
+				{/* Account Credentials Section - Show if user has purchased/rented or is owner/admin */}
+				{accountCredentials && (
+					<View style={styles.section}>
+						<View style={styles.sectionHeader}>
+							<Gem size={16} color={colors["lol-gold"]} />
+							<Text style={styles.sectionTitle}>Thông tin đăng nhập</Text>
+						</View>
+						<View style={styles.accountCredentialsContainer}>
+							<View style={styles.accountInfoRow}>
+								<Text style={styles.accountInfoLabel}>Tên đăng nhập:</Text>
+								<Text style={styles.accountInfoValue}>{accountCredentials.username}</Text>
+							</View>
+							<View style={styles.accountInfoRow}>
+								<Text style={styles.accountInfoLabel}>Mật khẩu:</Text>
+								<Text style={styles.accountInfoValue}>{accountCredentials.password}</Text>
+							</View>
+						</View>
+					</View>
+				)}
+
 				{/* Spacer for fixed bottom */}
 				<View style={{ height: 100 }} />
 			</ScrollView>
 
-			{/* Fixed Bottom CTA */}
-			{account.status === "available" && (
+			{/* Fixed Bottom CTA - Only show if account is available and user is not the owner */}
+			{account.status === "available" && !isOwner && (
 				<View style={styles.bottomCTA}>
 					<View style={styles.priceContainer}>
 						<Text style={styles.priceLabel}>Giá bán</Text>
@@ -1650,5 +1695,14 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		fontFamily: "Inter_600SemiBold",
 		color: colors.foreground,
+	},
+	accountCredentialsContainer: {
+		marginTop: 12,
+		padding: 16,
+		backgroundColor: `${colors.primary}1A`,
+		borderRadius: 12,
+		borderWidth: 1,
+		borderColor: colors.primary,
+		gap: 12,
 	},
 });

@@ -15,9 +15,9 @@ export default function ListView(props: ListViewProps) {
 
 	return (
 		<View style={styles.list}>
-			{data.map((item) => (
+			{data.map((item, index) => (
 				<ListItem 
-					key={item.id} 
+					key={item.firestoreId || `item-${item.id}-${index}`} 
 					item={item} 
 					showBuyNowButton={showBuyNowButton}
 					isOwner={ownerIds?.get(item.id) || false}
