@@ -155,13 +155,17 @@ export const getAccountById = async (
 
 /**
  * 4. TÌM KIẾM NÂNG CAO (Query Nested Object)
- * Ví dụ: Tìm tất cả rank 'Gold'
+ * @param filters Filter values object
  */
-export const filterAccounts = async (
-	rankTier?: string,
-	minPrice?: number,
-	maxPrice?: number,
-) => {
+export const filterAccounts = async (filters: {
+	rankTier?: string;
+	minPrice?: number;
+	maxPrice?: number;
+	minSkinCount?: number;
+	maxSkinCount?: number;
+	minLevel?: number;
+	maxLevel?: number;
+}) => {
 	const app = getApp();
 	const db = getFirestore(app);
 	const accountsRef = collection(db, ACCOUNTS_COLL);
@@ -169,21 +173,73 @@ export const filterAccounts = async (
 	const constraints = [where("status", "==", "available")];
 
 	// Query vào Nested Object: dùng dấu chấm "."
-	// Lưu ý: Cần tạo Index trên Firestore Console cho 'soloRank.tier'
-	if (rankTier) {
-		constraints.push(where("soloRank.tier", "==", rankTier));
+	// Lưu ý: Cần tạo Index trên Firestore Console cho các field được filter
+	
+	// Track which field has inequality operator (for orderBy requirement)
+	let inequalityField: string | null = null;
+
+	if (filters.rankTier) {
+		constraints.push(where("soloRank.tier", "==", filters.rankTier));
 	}
 
-	if (maxPrice) {
-		constraints.push(where("buyPrice", "<=", maxPrice));
+	if (filters.minPrice !== undefined) {
+		constraints.push(where("buyPrice", ">=", filters.minPrice));
+		inequalityField = "buyPrice";
+	}
+
+	if (filters.maxPrice !== undefined) {
+		constraints.push(where("buyPrice", "<=", filters.maxPrice));
+		inequalityField = "buyPrice";
+	}
+
+	if (filters.minSkinCount !== undefined) {
+		constraints.push(where("skinCount", ">=", filters.minSkinCount));
+		inequalityField = "skinCount";
+	}
+
+	if (filters.maxSkinCount !== undefined) {
+		constraints.push(where("skinCount", "<=", filters.maxSkinCount));
+		inequalityField = "skinCount";
+	}
+
+	if (filters.minLevel !== undefined) {
+		constraints.push(where("level", ">=", filters.minLevel));
+		inequalityField = "level";
+	}
+
+	if (filters.maxLevel !== undefined) {
+		constraints.push(where("level", "<=", filters.maxLevel));
+		inequalityField = "level";
+	}
+
+	// Firestore requirement: If using inequality operators, the field must be first in orderBy
+	// If no inequality, we can order by createdAt
+	if (inequalityField) {
+		constraints.push(orderBy(inequalityField, "asc"));
+		// Can add secondary sort by createdAt if needed (requires composite index)
+		// constraints.push(orderBy("createdAt", "desc"));
+	} else {
+		constraints.push(orderBy("createdAt", "desc"));
 	}
 
 	const q = query(accountsRef, ...constraints);
 	const snapshot = await getDocs(q);
 
-	return snapshot.docs.map((docSnap) =>
+	// Sort by createdAt desc in memory if we had to use inequality field for orderBy
+	let accounts = snapshot.docs.map((docSnap) =>
 		stripSensitiveData({ id: docSnap.id, ...docSnap.data() } as LolAccount),
 	);
+
+	// If we used inequality field for orderBy, sort by createdAt in memory
+	if (inequalityField) {
+		accounts.sort((a, b) => {
+			const aTime = a.createdAt?.toMillis() || 0;
+			const bTime = b.createdAt?.toMillis() || 0;
+			return bTime - aTime; // desc
+		});
+	}
+
+	return accounts;
 };
 
 /**

@@ -96,7 +96,6 @@ const styles = StyleSheet.create({
 		position: "absolute",
 		top: 12,
 		right: 18,
-		zIndex: 1,
 	},
 	username: {
 		color: "#02AFAC",

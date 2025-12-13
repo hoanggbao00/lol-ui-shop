@@ -1,7 +1,8 @@
-import { getAvailableAccounts } from "@/actions/account.action";
+import { filterAccounts, getAvailableAccounts } from "@/actions/account.action";
 import Background from "@/components/Background";
-import Filter from "@/components/home/Filter";
+import Filter, { type FilterRef, type FilterValues } from "@/components/home/Filter";
 import ListView from "@/components/home/ListView";
+import { colors } from "@/libs/colors";
 import type { LolAccount } from "@/types";
 import type { Item } from "@/types/items";
 import { getApp } from "@react-native-firebase/app";
@@ -9,7 +10,7 @@ import type { FirebaseAuthTypes } from "@react-native-firebase/auth";
 import { getAuth, onAuthStateChanged } from "@react-native-firebase/auth";
 import { Image } from "expo-image";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	ActivityIndicator,
 	ScrollView,
@@ -59,6 +60,14 @@ export default function Index() {
 	const [ownerIds, setOwnerIds] = useState<Map<number, boolean>>(new Map());
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [filters, setFilters] = useState<FilterValues>({});
+	const filterRef = useRef<FilterRef>(null);
+	const requestIdRef = useRef(0);
+
+	// Memoize filter change handler to prevent unnecessary re-renders
+	const handleFilterChange = useCallback((newFilters: FilterValues) => {
+		setFilters(newFilters);
+	}, []);
 
 	const handleAuthStateChanged = useCallback((_user: FirebaseAuthTypes.User | null) => {
 		setAuthUser(_user);
@@ -73,59 +82,141 @@ export default function Index() {
 	}, [handleAuthStateChanged]);
 
 	const fetchAccounts = useCallback(async () => {
+		// Increment request ID to track this request
+		const currentRequestId = ++requestIdRef.current;
+		lastFetchTimeRef.current = Date.now();
+
+		// Capture current filters at the start of the request to avoid stale closure
+		const currentFilters = filtersRef.current;
+
 		try {
 			setLoading(true);
 			setError(null);
-			const result = await getAvailableAccounts(50); // Load 50 items
-			const items = result.accounts.map(mapAccountToItem);
+
+			// Check if any filter is active using captured filters
+			const hasFilters = Object.keys(currentFilters).length > 0 && 
+				(currentFilters.rank || currentFilters.minPrice !== undefined || currentFilters.maxPrice !== undefined ||
+				 currentFilters.minSkinCount !== undefined || currentFilters.maxSkinCount !== undefined ||
+				 currentFilters.minLevel !== undefined || currentFilters.maxLevel !== undefined);
+
+			let accounts: LolAccount[];
+
+			if (hasFilters) {
+				// Use filterAccounts with filters
+				console.log("Filtering with:", currentFilters, "Request ID:", currentRequestId);
+				isFilteringRef.current = true;
+				accounts = await filterAccounts({
+					rankTier: currentFilters.rank,
+					minPrice: currentFilters.minPrice,
+					maxPrice: currentFilters.maxPrice,
+					minSkinCount: currentFilters.minSkinCount,
+					maxSkinCount: currentFilters.maxSkinCount,
+					minLevel: currentFilters.minLevel,
+					maxLevel: currentFilters.maxLevel,
+				});
+				console.log("Filtered accounts:", accounts.length, "Request ID:", currentRequestId);
+			} else {
+				// Use getAvailableAccounts without filters
+				console.log("Fetching all accounts (no filters) Request ID:", currentRequestId);
+				isFilteringRef.current = false;
+				const result = await getAvailableAccounts(50);
+				accounts = result.accounts;
+			}
+
+			// Check if this is still the latest request
+			if (currentRequestId !== requestIdRef.current) {
+				console.log("Ignoring stale request result - request ID:", currentRequestId, "current:", requestIdRef.current);
+				return;
+			}
+
+			const items = accounts.map(mapAccountToItem);
+			console.log("Mapped items:", items.length, "Request ID:", currentRequestId);
 			setData(items);
 
 			// Create map of owner IDs
 			if (authUser?.uid) {
 				const ownerMap = new Map<number, boolean>();
-				result.accounts.forEach((account: LolAccount) => {
+				accounts.forEach((account: LolAccount) => {
 					const itemId = account.id ? parseInt(account.id.slice(0, 8), 16) || 0 : 0;
 					ownerMap.set(itemId, account.sellerId === authUser.uid);
 				});
 				setOwnerIds(ownerMap);
 			}
-		} catch (err) {
+		} catch (err: any) {
+			// Only handle error if this is still the latest request
+			if (currentRequestId !== requestIdRef.current) {
+				return;
+			}
 			console.error("Error fetching accounts:", err);
 			setError("Không thể tải danh sách tài khoản");
+			// Don't reset filters automatically - let user decide
 		} finally {
-			setLoading(false);
+			// Only set loading to false if this is still the current request
+			if (currentRequestId === requestIdRef.current) {
+				setLoading(false);
+			}
 		}
-	}, [authUser]);
+	}, [authUser?.uid]); // Remove filters from dependencies - use filtersRef instead
 
+	// Track last fetch time to prevent duplicate fetches
+	const lastFetchTimeRef = useRef(0);
+	const isFilteringRef = useRef(false);
+	const filtersRef = useRef<FilterValues>(filters);
+
+	// Update filters ref when filters change
+	useEffect(() => {
+		filtersRef.current = filters;
+	}, [filters]);
+
+	// Fetch on initial load
 	useEffect(() => {
 		if (!initializing) {
 			fetchAccounts();
 		}
-	}, [initializing, fetchAccounts]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [initializing]); // Only trigger on initializing change
 
-	// Refetch data when tab is focused
+	// Fetch when filters change (separate effect to avoid dependency issues)
+	useEffect(() => {
+		if (!initializing) {
+			fetchAccounts();
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [filters.rank, filters.minPrice, filters.maxPrice, filters.minSkinCount, filters.maxSkinCount, filters.minLevel, filters.maxLevel]); // Trigger when filters change
+
+	// Refetch data when tab is focused (only if no filters are active and enough time has passed)
 	useFocusEffect(
 		useCallback(() => {
-			fetchAccounts();
-		}, [fetchAccounts])
+			// Check if any filter is active using ref to get latest value
+			const currentFilters = filtersRef.current;
+			const hasFilters = Object.keys(currentFilters).length > 0 && 
+				(currentFilters.rank || currentFilters.minPrice !== undefined || currentFilters.maxPrice !== undefined ||
+				 currentFilters.minSkinCount !== undefined || currentFilters.maxSkinCount !== undefined ||
+				 currentFilters.minLevel !== undefined || currentFilters.maxLevel !== undefined);
+
+			// Don't refetch if:
+			// 1. Still initializing
+			// 2. Has active filters (let filter change trigger fetch instead)
+			// 3. Just fetched recently (within 1000ms to avoid race conditions)
+			// 4. Currently filtering
+			const now = Date.now();
+			const timeSinceLastFetch = now - lastFetchTimeRef.current;
+
+			if (!initializing && !hasFilters && !isFilteringRef.current && timeSinceLastFetch > 1000) {
+				console.log("Refetching on focus (no filters)");
+				lastFetchTimeRef.current = now;
+				fetchAccounts();
+			} else {
+				console.log("Skipping refetch on focus - hasFilters:", hasFilters, "isFiltering:", isFilteringRef.current, "timeSinceLastFetch:", timeSinceLastFetch);
+			}
+		}, [fetchAccounts, initializing])
 	);
 
 	const handleNavigateToCart = () => {
 		router.push("/cart");
 	};
 
-	if (loading) {
-		return (
-			<View style={styles.container}>
-				<Background />
-				<StatusBar barStyle="light-content" />
-				<View style={styles.loadingContainer}>
-					<ActivityIndicator size="large" color="#CABB8E" />
-					<Text style={styles.loadingText}>Đang tải...</Text>
-				</View>
-			</View>
-		);
-	}
+	// Don't return early on loading - keep Filter component mounted
 
 	if (error) {
 		return (
@@ -134,29 +225,63 @@ export default function Index() {
 				<StatusBar barStyle="light-content" />
 				<View style={styles.errorContainer}>
 					<Text style={styles.errorText}>{error}</Text>
-					<TouchableOpacity onPress={fetchAccounts} style={styles.retryButton}>
-						<Text style={styles.retryButtonText}>Thử lại</Text>
-					</TouchableOpacity>
+					<Text style={styles.errorSubText}>Có thể do filter không hợp lệ. Bạn có muốn reset filter và thử lại không?</Text>
+					<View style={styles.errorButtonContainer}>
+						<TouchableOpacity 
+							onPress={() => {
+								setError(null);
+								fetchAccounts();
+							}} 
+							style={[styles.retryButton, styles.retryButtonSecondary]}
+						>
+							<Text style={[styles.retryButtonText, styles.retryButtonSecondaryText]}>Thử lại</Text>
+						</TouchableOpacity>
+						<TouchableOpacity 
+							onPress={() => {
+								filterRef.current?.reset();
+								setFilters({});
+								setError(null);
+								fetchAccounts();
+							}} 
+							style={styles.retryButton}
+						>
+							<Text style={styles.retryButtonText}>Reset Filter & Thử lại</Text>
+						</TouchableOpacity>
+					</View>
 				</View>
 			</View>
 		);
 	}
 
 	return (
-		<ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollViewContent}>
+		<View style={styles.container}>
+			<Background />
 			<StatusBar barStyle="light-content" />
-
-			<View style={styles.container}>
-				<Background />
+			<ScrollView 
+				style={styles.scrollView} 
+				contentContainerStyle={styles.scrollViewContent}
+				showsVerticalScrollIndicator={false}
+			>
 				<View style={styles.header}>
 					<TouchableOpacity onPress={handleNavigateToCart}>
 						<Image source={icons.cart} style={styles.icon} />
 					</TouchableOpacity>
 				</View>
-				<Filter />
-				<ListView data={data} ownerIds={ownerIds} />
-			</View>
-		</ScrollView>
+				<Filter ref={filterRef} onFilterChange={handleFilterChange} />
+				{loading ? (
+					<View style={styles.loadingContainer}>
+						<ActivityIndicator size="large" color="#CABB8E" />
+						<Text style={styles.loadingText}>Đang tải...</Text>
+					</View>
+				) : data.length === 0 ? (
+					<View style={styles.emptyContainer}>
+						<Text style={styles.emptyText}>Không tìm thấy tài khoản nào</Text>
+					</View>
+				) : (
+					<ListView data={data} ownerIds={ownerIds} />
+				)}
+			</ScrollView>
+		</View>
 	);
 }
 
@@ -215,5 +340,35 @@ const styles = StyleSheet.create({
 		color: "#000",
 		fontSize: 16,
 		fontWeight: "bold",
+	},
+	errorSubText: {
+		color: "#CABB8E",
+		fontSize: 14,
+		textAlign: "center",
+		marginTop: 8,
+	},
+	errorButtonContainer: {
+		marginTop: 16,
+		gap: 12,
+		width: "100%",
+	},
+	retryButtonSecondary: {
+		backgroundColor: `${colors["lol-gold"]}30`,
+		borderWidth: 1,
+		borderColor: colors["lol-gold"],
+	},
+	retryButtonSecondaryText: {
+		color: colors["lol-gold"],
+	},
+	emptyContainer: {
+		padding: 32,
+		alignItems: "center",
+		justifyContent: "center",
+		minHeight: 200,
+	},
+	emptyText: {
+		color: "#CABB8E",
+		fontSize: 16,
+		textAlign: "center",
 	},
 });

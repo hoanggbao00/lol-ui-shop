@@ -17,7 +17,7 @@ interface FilterButtonProps {
 }
 
 export default function FilterButton(props: FilterButtonProps) {
-	const { placeholder, style } = props;
+	const { placeholder, style, selectedValue, onSelectValue, options } = props;
 	const [isOpen, setIsOpen] = useState(false);
 
 	const handlePress = () => {
@@ -25,21 +25,21 @@ export default function FilterButton(props: FilterButtonProps) {
 	};
 
 	const getSelectedValueColor = (value: string) => {
-		return props.selectedValue === value ? colors["lol-gold"] : "white";
+		return selectedValue === value ? colors["lol-gold"] : "white";
 	};
 
-	const onSelectValue = (value: string) => {
-		if (props.selectedValue === value) {
-			props.onSelectValue?.("");
+	const handleSelectValue = (value: string) => {
+		if (selectedValue === value) {
+			onSelectValue?.("");
 		} else {
-			props.onSelectValue?.(value);
+			onSelectValue?.(value);
 		}
 
 		setIsOpen(false);
 	};
 
-	const displayValue = props.selectedValue
-		? props.options?.find((option) => option.value === props.selectedValue)
+	const displayValue = selectedValue
+		? options?.find((option) => option.value === selectedValue)
 				?.label
 		: placeholder;
 
@@ -54,14 +54,13 @@ export default function FilterButton(props: FilterButtonProps) {
 				style={{
 					flexDirection: "row",
 					alignItems: "center",
-					gap: 8,
 					padding: 8,
 					borderWidth: 1,
 					borderColor: colors["lol-gold"],
 					backgroundColor: "#000B0D",
 					borderRadius: 6,
 					justifyContent: "space-between",
-					...(props.selectedValue && {
+					...(selectedValue && {
 						backgroundColor: `${colors["lol-gold"]}50`,
 					}),
 				}}
@@ -93,10 +92,10 @@ export default function FilterButton(props: FilterButtonProps) {
 						zIndex: 1,
 					}}
 				>
-					{props.options?.map((option) => (
+					{options?.map((option) => (
 						<TouchableOpacity
 							key={option.value}
-							onPress={() => onSelectValue(option.value)}
+							onPress={() => handleSelectValue(option.value)}
 							style={{
 								flexDirection: "row",
 								alignItems: "center",
@@ -111,7 +110,7 @@ export default function FilterButton(props: FilterButtonProps) {
 							>
 								{option.label}
 							</Text>
-							{props.selectedValue === option.value && (
+							{selectedValue === option.value && (
 								<Ionicons
 									name="checkmark"
 									size={20}
