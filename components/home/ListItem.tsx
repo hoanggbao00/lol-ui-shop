@@ -107,7 +107,7 @@ export default function ListItem(props: ListItemProps) {
 							<BuyNowButton onPress={handlePress} />
 						</TouchableOpacity>
 					)}
-					{isOwner && (
+					{isOwner && item.status !== "sold" && (
 						<TouchableOpacity 
 							onPress={(e) => {
 								e.stopPropagation();

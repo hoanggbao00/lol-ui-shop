@@ -524,22 +524,65 @@ export const getRentableAccounts = async () => {
 	// Cập nhật các account đã hết hạn thuê trước khi lấy danh sách
 	await updateExpiredRentals();
 
-	// Lấy tất cả accounts có rentPricePerHour > 0
-	// Lưu ý: Cần tạo Index trên Firestore Console cho 'rentPricePerHour'
-	const q = query(
-		accountsRef,
-		where("rentPricePerHour", ">", 0),
-		orderBy("rentPricePerHour", "asc")
-	);
+	try {
+		// Thử query đơn giản nhất: chỉ filter theo rentPricePerHour (không có orderBy để tránh cần composite index)
+		const q = query(
+			accountsRef,
+			where("rentPricePerHour", ">", 0)
+		);
 
-	const snapshot = await getDocs(q);
+		const snapshot = await getDocs(q);
 
-	const accounts = snapshot.docs.map((docSnap) => {
-		const data = { id: docSnap.id, ...docSnap.data() } as LolAccount;
-		return stripSensitiveData(data);
-	});
+		const accounts = snapshot.docs
+			.map((docSnap) => {
+				const data = { id: docSnap.id, ...docSnap.data() } as LolAccount;
+				return stripSensitiveData(data);
+			})
+			.filter((account) => 
+				account.status !== "sold" && 
+				(account.status === "available" || account.status === "renting")
+			)
+			.sort((a, b) => {
+				// Sort by rentPricePerHour ascending ở client side
+				const priceA = a.rentPricePerHour || 0;
+				const priceB = b.rentPricePerHour || 0;
+				// Sort: available lên đầu, renting xuống cuối, sau đó sort theo price
+				if (a.status === "available" && b.status === "renting") return -1;
+				if (a.status === "renting" && b.status === "available") return 1;
+				return priceA - priceB;
+			});
 
-	return accounts;
+		return accounts;
+	} catch (error: any) {
+		// Nếu vẫn bị permission denied, có thể do Firestore rules
+		// Thử query tất cả rồi filter ở client (chỉ nên dùng nếu có ít data)
+		if (error.code === "firestore/permission-denied" || error.code === "permission-denied") {
+			console.warn("Permission denied with where clause, trying to fetch all and filter client-side");
+			
+			// Lưu ý: Cách này chỉ nên dùng nếu số lượng accounts không quá lớn
+			// Và cần đảm bảo Firestore rules cho phép đọc collection
+			const allSnapshot = await getDocs(accountsRef);
+			
+			return allSnapshot.docs
+				.map((docSnap) => {
+					const data = { id: docSnap.id, ...docSnap.data() } as LolAccount;
+					return stripSensitiveData(data);
+				})
+				.filter((account) => 
+					(account.rentPricePerHour || 0) > 0 &&
+					account.status !== "sold" && 
+					(account.status === "available" || account.status === "renting")
+				)
+				.sort((a, b) => {
+					const priceA = a.rentPricePerHour || 0;
+					const priceB = b.rentPricePerHour || 0;
+					if (a.status === "available" && b.status === "renting") return -1;
+					if (a.status === "renting" && b.status === "available") return 1;
+					return priceA - priceB;
+				});
+		}
+		throw error;
+	}
 };
 
 /**

@@ -35,17 +35,43 @@ export const getUserTransactions = async (userId: string) => {
 	const db = getFirestore(app);
 	const transactionsRef = collection(db, TRANSACTIONS_COLL);
 
-	const q = query(
-		transactionsRef,
-		where("userId", "==", userId),
-		orderBy("createdAt", "desc"),
-	);
+	try {
+		// Try query with orderBy first (requires composite index)
+		const q = query(
+			transactionsRef,
+			where("userId", "==", userId),
+			orderBy("createdAt", "desc"),
+		);
 
-	const snapshot = await getDocs(q);
+		const snapshot = await getDocs(q);
 
-	return snapshot.docs.map(
-		(docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as WalletTransaction,
-	);
+		return snapshot.docs.map(
+			(docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as WalletTransaction,
+		);
+	} catch (error: any) {
+		// Fallback: If composite index is missing, query without orderBy and sort client-side
+		if (error.code === "failed-precondition" || error.code === "unavailable") {
+			console.warn("Composite index missing, falling back to client-side sort");
+			const q = query(
+				transactionsRef,
+				where("userId", "==", userId),
+			);
+
+			const snapshot = await getDocs(q);
+
+			const transactions = snapshot.docs.map(
+				(docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as WalletTransaction,
+			);
+
+			// Sort by createdAt descending on client side
+			return transactions.sort((a, b) => {
+				const aTime = a.createdAt?.toMillis?.() || a.createdAt?.seconds || 0;
+				const bTime = b.createdAt?.toMillis?.() || b.createdAt?.seconds || 0;
+				return bTime - aTime;
+			});
+		}
+		throw error;
+	}
 };
 
 // Hàm dành cho Admin duyệt tiền

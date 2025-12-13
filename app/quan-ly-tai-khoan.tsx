@@ -1,4 +1,4 @@
-import { deleteAccount, getAllAccounts } from "@/actions/account.action";
+import { deleteAccount, getAllAccounts, updateAccountStatus } from "@/actions/account.action";
 import { getUserById } from "@/actions/user.action";
 import Background from "@/components/Background";
 import { colors } from "@/libs/colors";
@@ -7,11 +7,12 @@ import { getApp } from "@react-native-firebase/app";
 import type { FirebaseAuthTypes } from "@react-native-firebase/auth";
 import { getAuth, onAuthStateChanged } from "@react-native-firebase/auth";
 import { router, useFocusEffect } from "expo-router";
-import { ArrowLeft, Database, Edit, Trash2 } from "lucide-react-native";
+import { ArrowLeft, ChevronDown, Database, Edit, Trash2 } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
 import {
 	ActivityIndicator,
 	Alert,
+	Modal,
 	Platform,
 	ScrollView,
 	StatusBar,
@@ -28,6 +29,8 @@ export default function QuanLyTaiKhoan() {
 	const [userData, setUserData] = useState<any>(null);
 	const [accounts, setAccounts] = useState<LolAccount[]>([]);
 	const [loading, setLoading] = useState(true);
+	const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+	const [statusDropdownVisible, setStatusDropdownVisible] = useState(false);
 
 	const handleAuthStateChanged = useCallback((_user: FirebaseAuthTypes.User | null) => {
 		setAuthUser(_user);
@@ -87,6 +90,29 @@ export default function QuanLyTaiKhoan() {
 		router.push(`/edit/${account.id}`);
 	};
 
+	const handleStatusPress = (account: LolAccount) => {
+		setSelectedAccountId(account.id || null);
+		setStatusDropdownVisible(true);
+	};
+
+	const handleStatusChange = async (newStatus: "available" | "sold" | "renting" | "hidden") => {
+		if (!selectedAccountId) return;
+
+		try {
+			await updateAccountStatus(selectedAccountId, newStatus);
+			ToastAndroid.show("Cập nhật trạng thái thành công", ToastAndroid.SHORT);
+			setStatusDropdownVisible(false);
+			setSelectedAccountId(null);
+			fetchAccounts();
+		} catch (error: any) {
+			console.error("Error updating status:", error);
+			ToastAndroid.show(
+				error.message || "Không thể cập nhật trạng thái",
+				ToastAndroid.SHORT
+			);
+		}
+	};
+
 	const handleDelete = (account: LolAccount) => {
 		Alert.alert(
 			"Xác nhận xóa",
@@ -128,11 +154,13 @@ export default function QuanLyTaiKhoan() {
 	const getStatusColor = (status: string) => {
 		switch (status) {
 			case "available":
-				return colors.success || "#10B981";
+				return "#10B981";
 			case "sold":
 				return colors.mutedForeground;
 			case "renting":
-				return colors.warning || "#F59E0B";
+				return "#F59E0B";
+			case "hidden":
+				return colors.mutedForeground;
 			default:
 				return colors.mutedForeground;
 		}
@@ -146,6 +174,8 @@ export default function QuanLyTaiKhoan() {
 				return "Đã bán";
 			case "renting":
 				return "Đang thuê";
+			case "hidden":
+				return "Ẩn";
 			default:
 				return status;
 		}
@@ -207,18 +237,21 @@ export default function QuanLyTaiKhoan() {
 										Seller: {account.sellerId?.slice(0, 8) || "N/A"}
 									</Text>
 								</View>
-								<View
+								<TouchableOpacity
 									style={[
 										styles.statusBadge,
 										{ backgroundColor: `${getStatusColor(account.status)}1A` },
 									]}
+									onPress={() => handleStatusPress(account)}
+									activeOpacity={0.7}
 								>
 									<Text
 										style={[styles.statusText, { color: getStatusColor(account.status) }]}
 									>
 										{getStatusText(account.status)}
 									</Text>
-								</View>
+									<ChevronDown size={14} color={getStatusColor(account.status)} />
+								</TouchableOpacity>
 							</View>
 							<View style={styles.accountDetails}>
 								<Text style={styles.accountPrice}>
@@ -253,6 +286,75 @@ export default function QuanLyTaiKhoan() {
 					))
 				)}
 			</ScrollView>
+
+			{/* Status Dropdown Modal */}
+			<Modal
+				visible={statusDropdownVisible}
+				transparent
+				animationType="fade"
+				onRequestClose={() => {
+					setStatusDropdownVisible(false);
+					setSelectedAccountId(null);
+				}}
+			>
+				<TouchableOpacity
+					style={styles.modalOverlay}
+					activeOpacity={1}
+					onPress={() => {
+						setStatusDropdownVisible(false);
+						setSelectedAccountId(null);
+					}}
+				>
+					<View style={styles.dropdownContainer}>
+						<Text style={styles.dropdownTitle}>Chọn trạng thái</Text>
+						{["available", "sold", "renting", "hidden"].map((status) => (
+							<TouchableOpacity
+								key={status}
+								style={[
+									styles.dropdownOption,
+									selectedAccountId &&
+										accounts.find((a) => a.id === selectedAccountId)?.status === status &&
+										styles.dropdownOptionActive,
+								]}
+								onPress={() => handleStatusChange(status as any)}
+							>
+								<View
+									style={[
+										styles.statusIndicator,
+										{ backgroundColor: `${getStatusColor(status)}1A` },
+									]}
+								>
+									<View
+										style={[
+											styles.statusDot,
+											{ backgroundColor: getStatusColor(status) },
+										]}
+									/>
+								</View>
+								<Text
+									style={[
+										styles.dropdownOptionText,
+										selectedAccountId &&
+											accounts.find((a) => a.id === selectedAccountId)?.status === status &&
+											styles.dropdownOptionTextActive,
+									]}
+								>
+									{getStatusText(status)}
+								</Text>
+							</TouchableOpacity>
+						))}
+						<TouchableOpacity
+							style={styles.dropdownCancelButton}
+							onPress={() => {
+								setStatusDropdownVisible(false);
+								setSelectedAccountId(null);
+							}}
+						>
+							<Text style={styles.dropdownCancelText}>Hủy</Text>
+						</TouchableOpacity>
+					</View>
+				</TouchableOpacity>
+			</Modal>
 		</View>
 	);
 }
@@ -339,6 +441,9 @@ const styles = StyleSheet.create({
 		color: colors.mutedForeground,
 	},
 	statusBadge: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 4,
 		paddingHorizontal: 12,
 		paddingVertical: 6,
 		borderRadius: 12,
@@ -346,6 +451,76 @@ const styles = StyleSheet.create({
 	statusText: {
 		fontSize: 12,
 		fontFamily: "Inter_600SemiBold",
+	},
+	modalOverlay: {
+		flex: 1,
+		backgroundColor: "rgba(0, 0, 0, 0.5)",
+		justifyContent: "center",
+		alignItems: "center",
+	},
+	dropdownContainer: {
+		backgroundColor: colors.card,
+		borderRadius: 16,
+		padding: 16,
+		width: "80%",
+		maxWidth: 300,
+		borderWidth: 1,
+		borderColor: `${colors.border}80`,
+	},
+	dropdownTitle: {
+		fontSize: 18,
+		fontFamily: "Inter_700Bold",
+		color: colors.foreground,
+		marginBottom: 16,
+		textAlign: "center",
+	},
+	dropdownOption: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 12,
+		padding: 12,
+		borderRadius: 8,
+		marginBottom: 8,
+		backgroundColor: `${colors.muted}33`,
+	},
+	dropdownOptionActive: {
+		backgroundColor: `${colors.primary}1A`,
+		borderWidth: 1,
+		borderColor: colors.primary,
+	},
+	statusIndicator: {
+		width: 24,
+		height: 24,
+		borderRadius: 12,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	statusDot: {
+		width: 12,
+		height: 12,
+		borderRadius: 6,
+	},
+	dropdownOptionText: {
+		fontSize: 14,
+		fontFamily: "Inter_500Medium",
+		color: colors.foreground,
+		flex: 1,
+	},
+	dropdownOptionTextActive: {
+		fontFamily: "Inter_600SemiBold",
+		color: colors.primary,
+	},
+	dropdownCancelButton: {
+		marginTop: 8,
+		padding: 12,
+		borderRadius: 8,
+		backgroundColor: `${colors.muted}33`,
+		alignItems: "center",
+	},
+	dropdownCancelText: {
+		fontSize: 14,
+		fontFamily: "Inter_600SemiBold",
+		color: colors.mutedForeground,
 	},
 	accountDetails: {
 		gap: 8,

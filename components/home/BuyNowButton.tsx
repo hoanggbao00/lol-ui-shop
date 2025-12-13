@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
 		top: "50%",
 		transform: [{ translateX: "-50%" }, { translateY: "-50%" }],
 		color: "black",
-		fontSize: 16,
+		fontSize: 12,
 		fontFamily: "Inter_600SemiBold",
 	},
 });

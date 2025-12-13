@@ -23,4 +23,6 @@ export interface Order {
 	rent_end_date?: string;
 	created_at: string;
 	updated_at: string;
+	buyer_name?: string;
+	seller_name?: string;
 }

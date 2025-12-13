@@ -144,12 +144,14 @@ export default function DangBan() {
 			setData(items);
 
 			// Create map of owner IDs - all accounts in this page are owned by the user, or admin can edit
+			// But don't allow editing if account is sold
 			if (authUser?.uid) {
 				const ownerMap = new Map<number, boolean>();
 				result.accounts.forEach((account: LolAccount) => {
 					const itemId = account.id ? parseInt(account.id.slice(0, 8), 16) || 0 : 0;
-					// User owns the account OR user is admin
-					ownerMap.set(itemId, account.sellerId === authUser.uid || isUserAdmin);
+					// User owns the account OR user is admin, BUT only if account is not sold
+					const isOwner = (account.sellerId === authUser.uid || isUserAdmin) && account.status !== "sold";
+					ownerMap.set(itemId, isOwner);
 				});
 				setOwnerIds(ownerMap);
 			}

@@ -75,6 +75,7 @@ export default function NewAccountPage() {
 	const [forSale, setForSale] = useState(true);
 	const [forRent, setForRent] = useState(false);
 	const [image, setImage] = useState<string | null>(null);
+	const [imageBase64, setImageBase64] = useState<string | null>(null);
 	const [uploading, setUploading] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
 
@@ -122,19 +123,25 @@ export default function NewAccountPage() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsMultipleSelection: false, // Cho phép chọn nhiều ảnh
+      allowsMultipleSelection: false,
       quality: 0.7, // Nén ảnh nhẹ bớt (0.0 - 1.0)
+      base64: true, // Lấy base64 để upload trực tiếp lên Cloudinary
     });
 
     if (!result.canceled) {
-      // Lấy danh sách uri
-      const uris = result.assets.map(asset => asset.uri);
-      setImage(uris[0]);
+      // Lưu URI để hiển thị preview và base64 để upload
+      const asset = result.assets[0];
+      setImage(asset.uri);
+      // Lưu base64 để upload lên Cloudinary
+      if (asset.base64) {
+        setImageBase64(asset.base64);
+      }
     }
   };
 
 	const removeImage = () => {
 		setImage(null);
+		setImageBase64(null);
 	};
 
 	const validateForm = (): string | null => {
@@ -188,9 +195,9 @@ export default function NewAccountPage() {
 		try {
 			// 1. Upload image first (if image selected)
 			let thumbnailUrl: string | undefined = undefined;
-			if (image && !image.startsWith('http')) {
+			if (imageBase64) {
 				setUploading(true);
-				thumbnailUrl = await uploadImageToStorage(image, 'account_images');
+				thumbnailUrl = await uploadImageToStorage(imageBase64, 'account_images');
 				setUploading(false);
 			} else if (image && image.startsWith('http')) {
 				// Keep existing image URL if it's already a URL

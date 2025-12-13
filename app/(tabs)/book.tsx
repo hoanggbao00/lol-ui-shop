@@ -72,8 +72,13 @@ export default function Book() {
 			setError(null);
 			const rentableAccounts = await getRentableAccounts();
 
+			// Filter out sold accounts
+			const filteredAccounts = rentableAccounts.filter(
+				(account: LolAccount) => account.status !== "sold"
+			);
+
 			// Sort: available lên đầu, renting xuống cuối
-			const sortedAccounts = rentableAccounts.sort((a: LolAccount, b: LolAccount) => {
+			const sortedAccounts = filteredAccounts.sort((a: LolAccount, b: LolAccount) => {
 				if (a.status === "available" && b.status === "renting") return -1;
 				if (a.status === "renting" && b.status === "available") return 1;
 				return 0;

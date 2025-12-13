@@ -78,7 +78,7 @@ export default function SignIn() {
 							color: "#A0ADB5",
 						}}
 					>
-						Tên người dùng, email/số di động
+						Email
 					</Text>
 					<TextInput
 						style={{
@@ -87,7 +87,7 @@ export default function SignIn() {
 						}}
 						value={username}
 						onChangeText={setUsername}
-						placeholder="Tên người dùng, email/số di động"
+						placeholder="Email"
 					/>
 				</View>
 

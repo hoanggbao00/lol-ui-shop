@@ -10,7 +10,7 @@ import type { FirebaseAuthTypes } from "@react-native-firebase/auth";
 import { getAuth, onAuthStateChanged } from "@react-native-firebase/auth";
 import { router, useFocusEffect } from "expo-router";
 import { ArrowLeft, Receipt } from "lucide-react-native";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
 	ActivityIndicator,
 	Platform,
@@ -30,6 +30,44 @@ export default function QuanLyGiaoDich() {
 	const [orders, setOrders] = useState<Order[]>([]);
 	const [walletTransactions, setWalletTransactions] = useState<WalletTransaction[]>([]);
 	const [loading, setLoading] = useState(true);
+	
+	// Helper function to get timestamp for sorting
+	const getTimestamp = useCallback((item: Order | WalletTransaction): number => {
+		if (!item.createdAt) return 0;
+		const createdAt = item.createdAt as any;
+		if (typeof createdAt === 'object' && createdAt !== null) {
+			if ('toMillis' in createdAt && typeof createdAt.toMillis === 'function') {
+				return createdAt.toMillis();
+			}
+			if ('seconds' in createdAt && typeof createdAt.seconds === 'number') {
+				return createdAt.seconds * 1000;
+			}
+			if (createdAt instanceof Date) {
+				return createdAt.getTime();
+			}
+		}
+		return 0;
+	}, []);
+	
+	// Merge and sort all items (orders + transactions) by createdAt
+	const allItems = useMemo(() => {
+		const items: Array<{ type: 'order' | 'transaction'; data: Order | WalletTransaction }> = [];
+		
+		// Add orders
+		orders.forEach(order => {
+			items.push({ type: 'order', data: order });
+		});
+		
+		// Add transactions
+		walletTransactions.forEach(transaction => {
+			items.push({ type: 'transaction', data: transaction });
+		});
+		
+		// Sort by createdAt descending (newest first)
+		return items.sort((a, b) => {
+			return getTimestamp(b.data) - getTimestamp(a.data);
+		});
+	}, [orders, walletTransactions, getTimestamp]);
 	const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 	const [selectedWalletTransaction, setSelectedWalletTransaction] = useState<WalletTransaction | null>(null);
 	const [sheetVisible, setSheetVisible] = useState(false);
@@ -176,6 +214,10 @@ export default function QuanLyGiaoDich() {
 				return "Hoàn tiền";
 			case "penalty":
 				return "Phạt";
+			case "sale":
+				return "Bán tài khoản";
+			case "rent":
+				return "Thuê tài khoản";
 			default:
 				return method;
 		}
@@ -217,10 +259,11 @@ export default function QuanLyGiaoDich() {
 	};
 
 	const getAmountDisplay = (transaction: WalletTransaction) => {
-		// Cộng tiền: deposit hoặc refund
-		const isPositive = transaction.type === "deposit" || transaction.method === "refund";
+		// Cộng tiền: deposit (màu xanh), Trừ tiền: withdraw (màu đỏ)
+		const isPositive = transaction.type === "deposit";
 		const sign = isPositive ? "+" : "-";
-		const color = isPositive ? "#10B981" : colors.destructive;
+		// Màu xanh cho deposit, màu đỏ cho withdraw
+		const color = isPositive ? "#10B981" : "#EF4444"; // Green for deposit, Red for withdraw
 		const amount = formatPrice(transaction.amount);
 		
 		return { sign, amount, color, fullText: `${sign}${amount}` };
@@ -263,61 +306,110 @@ export default function QuanLyGiaoDich() {
 					<View style={{ width: 24 }} />
 				</View>
 
-				{/* Orders List */}
-				{orders.length === 0 && walletTransactions.length === 0 ? (
+				{/* Orders and Transactions List - Merged and Sorted */}
+				{allItems.length === 0 ? (
 					<View style={styles.emptyContainer}>
 						<Text style={styles.emptyText}>Chưa có giao dịch nào</Text>
 					</View>
 				) : (
 					<>
-						{orders.map((order) => (
-							<TouchableOpacity
-								key={order.id}
-								style={styles.orderCard}
-								onPress={() => handleOrderPress(order)}
-								activeOpacity={0.7}
-							>
-							<View style={styles.orderHeader}>
-								<View style={styles.orderIconContainer}>
-									<Receipt size={24} color={colors["lol-gold"]} />
-								</View>
-								<View style={styles.orderInfo}>
-									<Text style={styles.orderId}>ID: {order.id?.slice(0, 8) || "N/A"}</Text>
-									<Text style={styles.orderBuyer}>Buyer ID: {order.buyerId.slice(0, 8)}</Text>
-								</View>
-								<View
-									style={[
-										styles.statusBadge,
-										{ backgroundColor: `${getStatusColor(order.status)}1A` },
-									]}
-								>
-									<Text
-										style={[styles.statusText, { color: getStatusColor(order.status) }]}
+						{allItems.map((item) => {
+							if (item.type === 'order') {
+								const order = item.data as Order;
+								// Get order type from first item
+								const orderType = order.items?.[0]?.transactionType || "purchase";
+								const isPurchase = orderType === "purchase";
+								
+								return (
+									<TouchableOpacity
+										key={`order-${order.id}`}
+										style={styles.orderCard}
+										onPress={() => handleOrderPress(order)}
+										activeOpacity={0.7}
 									>
-										{getStatusText(order.status)}
-									</Text>
-								</View>
-							</View>
-							<View style={styles.orderDetails}>
-								<Text style={styles.orderAmount}>
-									Tổng tiền: {formatPrice(order.totalAmount)}
-								</Text>
-								<Text style={styles.orderItems}>
-									Số lượng items: {order.items?.length || 0}
-								</Text>
-								<Text style={styles.orderDate}>
-									Ngày tạo: {formatDate(order.createdAt)}
-								</Text>
-							</View>
-						</TouchableOpacity>
-						))}
-						{walletTransactions.map((transaction) => (
-							<TouchableOpacity
-								key={transaction.id}
-								style={styles.orderCard}
-								onPress={() => handleWalletTransactionPress(transaction)}
-								activeOpacity={0.7}
-							>
+									{/* Type Badge - Outside Card */}
+									<View style={styles.orderTypeRow}>
+										<View
+											style={[
+												styles.orderTypeBadge,
+												{
+													backgroundColor: isPurchase
+														? `${colors.primary}33`
+														: `${colors.accent}33`,
+												},
+											]}
+										>
+											<Text
+												style={[
+													styles.orderTypeText,
+													{
+														color: isPurchase ? colors.primary : colors.accent,
+													},
+												]}
+											>
+												{isPurchase ? "Mua tài khoản" : "Thuê tài khoản"}
+											</Text>
+										</View>
+										<Text style={styles.orderAmountYellow}>
+											{formatPrice(order.totalAmount)}
+										</Text>
+									</View>
+
+									<View style={styles.orderHeader}>
+										<View style={styles.orderIconContainer}>
+											<Receipt size={24} color={colors["lol-gold"]} />
+										</View>
+										<View style={styles.orderInfo}>
+											<Text style={styles.orderId}>ID: {order.id?.slice(0, 8) || "N/A"}</Text>
+											<Text style={styles.orderBuyer}>Buyer ID: {order.buyerId.slice(0, 8)}</Text>
+										</View>
+										<View
+											style={[
+												styles.statusBadge,
+												{ backgroundColor: `${getStatusColor(order.status)}1A` },
+											]}
+										>
+											<Text
+												style={[styles.statusText, { color: getStatusColor(order.status) }]}
+											>
+												{getStatusText(order.status)}
+											</Text>
+										</View>
+									</View>
+									<View style={styles.orderDetails}>
+										{/* Items List */}
+										{order.items && order.items.length > 0 && (
+											<View style={styles.itemsContainer}>
+												<Text style={styles.itemsLabel}>Tài khoản:</Text>
+												{order.items.map((item, index) => (
+													<View key={index} style={styles.itemRow}>
+														<Text style={styles.itemName} numberOfLines={1}>
+															• {item.accountTitleSnapshot || `Account ${item.accountId.slice(0, 8)}`}
+														</Text>
+														{item.rentDurationHours && (
+															<Text style={styles.itemRentDuration}>
+																({item.rentDurationHours}h)
+															</Text>
+														)}
+													</View>
+												))}
+											</View>
+										)}
+										<Text style={styles.orderDate}>
+											Ngày tạo: {formatDate(order.createdAt)}
+										</Text>
+									</View>
+									</TouchableOpacity>
+								);
+							} else {
+								const transaction = item.data as WalletTransaction;
+								return (
+									<TouchableOpacity
+										key={`transaction-${transaction.id}`}
+										style={styles.orderCard}
+										onPress={() => handleWalletTransactionPress(transaction)}
+										activeOpacity={0.7}
+									>
 								<View style={styles.orderHeader}>
 									<View style={styles.orderIconContainer}>
 										<Receipt size={24} color={colors["lol-gold"]} />
@@ -347,6 +439,17 @@ export default function QuanLyGiaoDich() {
 									</View>
 								</View>
 								<View style={styles.orderDetails}>
+									{/* Account Info if available */}
+									{transaction.accountTitleSnapshot && (
+										<View style={styles.itemsContainer}>
+											<Text style={styles.itemsLabel}>Tài khoản:</Text>
+											<View style={styles.itemRow}>
+												<Text style={styles.itemName} numberOfLines={1}>
+													• {transaction.accountTitleSnapshot}
+												</Text>
+											</View>
+										</View>
+									)}
 									<View style={styles.amountRow}>
 										<Text style={styles.orderAmountLabel}>Số tiền: </Text>
 										<Text style={[styles.orderAmount, { color: getAmountDisplay(transaction).color }]}>
@@ -360,8 +463,10 @@ export default function QuanLyGiaoDich() {
 										Ngày tạo: {formatDate(transaction.createdAt)}
 									</Text>
 								</View>
-							</TouchableOpacity>
-						))}
+								</TouchableOpacity>
+								);
+							}
+						})}
 					</>
 				)}
 			</ScrollView>
@@ -504,6 +609,54 @@ const styles = StyleSheet.create({
 		color: colors["lol-gold"],
 		fontFamily: "Inter_500Medium",
 		marginTop: 2,
+	},
+	orderTypeRow: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+		marginBottom: 12,
+		paddingBottom: 12,
+		borderBottomWidth: 1,
+		borderBottomColor: `${colors.border}40`,
+	},
+	orderTypeBadge: {
+		paddingHorizontal: 12,
+		paddingVertical: 6,
+		borderRadius: 8,
+	},
+	orderTypeText: {
+		fontSize: 14,
+		fontFamily: "Inter_600SemiBold",
+	},
+	orderAmountYellow: {
+		fontSize: 18,
+		fontFamily: "Inter_700Bold",
+		color: "#E4B831", // Yellow/Gold color
+	},
+	itemsContainer: {
+		gap: 4,
+		marginBottom: 8,
+	},
+	itemsLabel: {
+		fontSize: 14,
+		fontFamily: "Inter_600SemiBold",
+		color: colors.foreground,
+		marginBottom: 4,
+	},
+	itemRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+	},
+	itemName: {
+		fontSize: 13,
+		color: colors.mutedForeground,
+		flex: 1,
+	},
+	itemRentDuration: {
+		fontSize: 12,
+		color: colors.accent,
+		fontFamily: "Inter_500Medium",
 	},
 });
 

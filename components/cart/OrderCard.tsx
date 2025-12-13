@@ -77,6 +77,112 @@ export default function OrderCard({ order, onPress }: OrderCardProps) {
 			onPress={() => onPress?.(order)}
 			activeOpacity={0.7}
 		>
+			{/* User Info - Outside Card */}
+			{(order.buyer_name || order.seller_name) && (
+				<View
+					style={{
+						flexDirection: "row",
+						justifyContent: "space-between",
+						alignItems: "center",
+						marginBottom: 12,
+						paddingBottom: 12,
+						borderBottomWidth: 1,
+						borderBottomColor: `${colors.border}40`,
+					}}
+				>
+					{order.buyer_name && (
+						<View style={{ flex: 1 }}>
+							<Text
+								style={{
+									fontSize: 11,
+									color: colors.mutedForeground,
+									marginBottom: 2,
+								}}
+							>
+								Người mua:
+							</Text>
+							<Text
+								style={{
+									fontSize: 13,
+									fontFamily: "Inter_600SemiBold",
+									color: colors.foreground,
+								}}
+							>
+								{order.buyer_name}
+							</Text>
+						</View>
+					)}
+					{order.seller_name && (
+						<View style={{ flex: 1, alignItems: "flex-end" }}>
+							<Text
+								style={{
+									fontSize: 11,
+									color: colors.mutedForeground,
+									marginBottom: 2,
+								}}
+							>
+								Người bán:
+							</Text>
+							<Text
+								style={{
+									fontSize: 13,
+									fontFamily: "Inter_600SemiBold",
+									color: colors.foreground,
+								}}
+							>
+								{order.seller_name}
+							</Text>
+						</View>
+					)}
+				</View>
+			)}
+
+			{/* Type Badge - Outside Card */}
+			<View
+				style={{
+					flexDirection: "row",
+					justifyContent: "space-between",
+					alignItems: "center",
+					marginBottom: 12,
+				}}
+			>
+				<View
+					style={{
+						paddingHorizontal: 10,
+						paddingVertical: 5,
+						borderRadius: 8,
+						backgroundColor:
+							order.type === "purchase"
+								? `${colors.primary}33`
+								: `${colors.accent}33`,
+					}}
+				>
+					<Text
+						style={{
+							fontSize: 12,
+							fontFamily: "Inter_600SemiBold",
+							color:
+								order.type === "purchase" ? colors.primary : colors.accent,
+						}}
+					>
+						{order.type === "purchase"
+							? "Mua tài khoản"
+							: `Thuê ${order.rent_days || 0} ngày`}
+					</Text>
+				</View>
+
+				{/* Price - Yellow Color */}
+				<Text
+					style={{
+						fontSize: 18,
+						fontFamily: "Inter_700Bold",
+						color: "#E4B831", // Yellow/Gold color
+					}}
+				>
+					{order.amount.toLocaleString("vi-VN")}đ
+				</Text>
+			</View>
+
 			<View
 				style={{
 					flexDirection: "row",
@@ -167,50 +273,6 @@ export default function OrderCard({ order, onPress }: OrderCardProps) {
 								{status.label}
 							</Text>
 						</View>
-					</View>
-
-					{/* Type and Amount */}
-					<View
-						style={{
-							flexDirection: "row",
-							justifyContent: "space-between",
-							alignItems: "center",
-						}}
-					>
-						<View
-							style={{
-								paddingHorizontal: 8,
-								paddingVertical: 4,
-								borderRadius: 8,
-								backgroundColor:
-									order.type === "purchase"
-										? `${colors.primary}33`
-										: `${colors.accent}33`,
-							}}
-						>
-							<Text
-								style={{
-									fontSize: 11,
-									fontFamily: "Inter_500Medium",
-									color:
-										order.type === "purchase" ? colors.primary : colors.accent,
-								}}
-							>
-								{order.type === "purchase"
-									? "Mua"
-									: `Thuê ${order.rent_days} ngày`}
-							</Text>
-						</View>
-
-						<Text
-							style={{
-								fontSize: 16,
-								fontFamily: "Inter_700Bold",
-								color: colors.primary,
-							}}
-						>
-							{order.amount.toLocaleString("vi-VN")}đ
-						</Text>
 					</View>
 
 					{/* Date */}

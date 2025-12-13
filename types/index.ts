@@ -40,6 +40,8 @@ export interface WalletTransaction {
 	status: TransactionStatus;
 	transactionCode?: string;
 	adminNote?: string;
+	accountId?: string; // ID của account liên quan (nếu có)
+	accountTitleSnapshot?: string; // Tên account tại thời điểm giao dịch
 	createdAt: FirebaseFirestoreTypes.Timestamp;
 	updatedAt?: FirebaseFirestoreTypes.Timestamp;
 }

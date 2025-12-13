@@ -1,6 +1,6 @@
 import type { User } from "@/types";
 import { getApp } from "@react-native-firebase/app";
-import { getAuth } from "@react-native-firebase/auth";
+import { getAuth, EmailAuthProvider } from "@react-native-firebase/auth";
 import {
 	collection,
 	doc,
@@ -98,7 +98,7 @@ export const updatePassword = async (
 	}
 
 	// Re-authenticate user with current password
-	const credential = getAuth(app).EmailAuthProvider.credential(
+	const credential = EmailAuthProvider.credential(
 		user.email,
 		currentPassword
 	);

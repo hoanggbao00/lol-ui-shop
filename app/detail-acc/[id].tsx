@@ -1,6 +1,6 @@
-import { getAccountById } from "@/actions/account.action";
-import { reclaimAccount } from "@/actions/order.action";
-import { getUserById } from "@/actions/user.action";
+import { getAccountById, getAccountCredentials } from "@/actions/account.action";
+import { createOrder, reclaimAccount } from "@/actions/order.action";
+import { getUserById, updateUserBalance } from "@/actions/user.action";
 import Background from "@/components/Background";
 import RankCard from "@/components/detail-account/RankCard";
 import StatBadge from "@/components/detail-account/StatBadge";
@@ -12,6 +12,7 @@ import type { AccountDetail } from "@/types/account";
 import { getApp } from "@react-native-firebase/app";
 import type { FirebaseAuthTypes } from "@react-native-firebase/auth";
 import { getAuth, onAuthStateChanged } from "@react-native-firebase/auth";
+import { Timestamp, addDoc, collection, getFirestore, serverTimestamp } from "@react-native-firebase/firestore";
 import { Image } from "expo-image";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import {
@@ -109,6 +110,10 @@ export default function DetailAcc() {
 	const [userData, setUserData] = useState<any>(null);
 	const [isOwnerOrAdmin, setIsOwnerOrAdmin] = useState(false);
 	const [reclaiming, setReclaiming] = useState(false);
+	const [paymentMethod, setPaymentMethod] = useState<"qr" | "balance" | null>(null);
+	const [showAccountInfo, setShowAccountInfo] = useState(false);
+	const [accountCredentials, setAccountCredentials] = useState<{ username: string; password: string } | null>(null);
+	const [isProcessing, setIsProcessing] = useState(false);
 
 	const fetchAccount = useCallback(async () => {
 		if (!id || typeof id !== "string") {
@@ -170,13 +175,18 @@ export default function DetailAcc() {
 
 	const handleBuy = () => {
 		setBuyModalOpen(true);
-		generateQRForBuy();
+		setPaymentMethod(null);
+		setQrUrl("");
+		setShowAccountInfo(false);
+		setAccountCredentials(null);
 	};
 
 	const handleRent = () => {
 		setRentModalOpen(true);
 		setSelectedRental(null);
 		setQrUrl("");
+		setShowAccountInfo(false);
+		setAccountCredentials(null);
 	};
 
 	const generateQRForBuy = () => {
@@ -198,6 +208,9 @@ export default function DetailAcc() {
 	const closeBuyModal = () => {
 		setBuyModalOpen(false);
 		setQrUrl("");
+		setPaymentMethod(null);
+		setShowAccountInfo(false);
+		setAccountCredentials(null);
 	};
 
 	const closeRentModal = () => {
@@ -212,6 +225,242 @@ export default function DetailAcc() {
 			ToastAndroid.SHORT
 		);
 		// TODO: Implement payment verification
+	};
+
+	const handlePayWithBalance = async () => {
+		if (!account || !account.id || !authUser) {
+			ToastAndroid.show("Vui lòng đăng nhập", ToastAndroid.SHORT);
+			return;
+		}
+
+		if (!userData) {
+			ToastAndroid.show("Không thể lấy thông tin tài khoản", ToastAndroid.SHORT);
+			return;
+		}
+
+		const amount = account.buyPrice || 0;
+		if (userData.balance < amount) {
+			ToastAndroid.show("Số dư không đủ để thanh toán", ToastAndroid.SHORT);
+			return;
+		}
+
+		Alert.alert(
+			"Xác nhận thanh toán",
+			`Bạn có chắc chắn muốn mua tài khoản này với giá ${formatPrice(amount)}?`,
+			[
+				{ text: "Hủy", style: "cancel" },
+				{
+					text: "Xác nhận",
+					onPress: async () => {
+						setIsProcessing(true);
+						try {
+							if (!account.id) {
+								throw new Error("Không tìm thấy ID tài khoản");
+							}
+
+							// Create purchase order with status "paid"
+							const orderId = await createOrder({
+								buyerId: authUser.uid,
+								totalAmount: amount,
+								status: "paid",
+								items: [
+									{
+										accountId: account.id,
+										transactionType: "purchase",
+										price: amount,
+										accountTitleSnapshot: account.ingameName || account.title || "Unknown",
+									},
+								],
+							});
+
+							// Deduct balance from buyer
+							await updateUserBalance(authUser.uid, -amount);
+
+							// Create wallet transaction record for buyer
+							const db = getFirestore(getApp());
+							const transactionsRef = collection(db, "wallet_transactions");
+							await addDoc(transactionsRef, {
+								userId: authUser.uid,
+								amount: amount,
+								type: "withdraw",
+								method: "balance",
+								transactionCode: `BUY_${account.id}_${Date.now()}`,
+								status: "completed",
+								createdAt: serverTimestamp(),
+							});
+
+							// Add balance to seller
+							if (account.sellerId) {
+								await updateUserBalance(account.sellerId, amount);
+
+								// Create wallet transaction record for seller
+								try {
+									await addDoc(transactionsRef, {
+										userId: account.sellerId,
+										amount: amount,
+										type: "deposit",
+										method: "sale",
+										transactionCode: `SALE_${account.id}_${Date.now()}`,
+										status: "completed",
+										accountId: account.id,
+										accountTitleSnapshot: account.ingameName || account.title || "Unknown",
+										createdAt: serverTimestamp(),
+									});
+									console.log("Seller transaction created successfully for:", account.sellerId);
+								} catch (transactionError: any) {
+									console.error("Error creating seller transaction:", transactionError);
+									// Don't throw - balance was already updated, just log the error
+								}
+							}
+
+							// Get account credentials
+							try {
+								const credentials = await getAccountCredentials(account.id);
+								if (credentials) {
+									setAccountCredentials(credentials);
+									setShowAccountInfo(true);
+								}
+							} catch (error: any) {
+								console.error("Error getting credentials:", error);
+							}
+
+							ToastAndroid.show("Mua tài khoản thành công!", ToastAndroid.LONG);
+							await fetchAccount();
+							setBuyModalOpen(false);
+						} catch (error: any) {
+							console.error("Error creating purchase order:", error);
+							ToastAndroid.show(
+								error.message || "Có lỗi xảy ra khi mua tài khoản",
+								ToastAndroid.LONG
+							);
+						} finally {
+							setIsProcessing(false);
+						}
+					},
+				},
+			]
+		);
+	};
+
+	const handleRentWithBalance = async (hours: number, price: number) => {
+		if (!account || !account.id || !authUser) {
+			ToastAndroid.show("Vui lòng đăng nhập", ToastAndroid.SHORT);
+			return;
+		}
+
+		if (!userData) {
+			ToastAndroid.show("Không thể lấy thông tin tài khoản", ToastAndroid.SHORT);
+			return;
+		}
+
+		if (userData.balance < price) {
+			ToastAndroid.show("Số dư không đủ để thanh toán", ToastAndroid.SHORT);
+			return;
+		}
+
+		Alert.alert(
+			"Xác nhận thanh toán",
+			`Bạn có chắc chắn muốn thuê tài khoản này trong ${hours} giờ với giá ${formatPrice(price)}?`,
+			[
+				{ text: "Hủy", style: "cancel" },
+				{
+					text: "Xác nhận",
+					onPress: async () => {
+						setIsProcessing(true);
+						try {
+							if (!account.id) {
+								throw new Error("Không tìm thấy ID tài khoản");
+							}
+
+							// Calculate rent end date
+							const rentEndDate = new Date();
+							rentEndDate.setHours(rentEndDate.getHours() + hours);
+							const rentEndTimestamp = Timestamp.fromDate(rentEndDate);
+
+							// Create rent order with status "paid"
+							const orderId = await createOrder({
+								buyerId: authUser.uid,
+								totalAmount: price,
+								status: "paid",
+								items: [
+									{
+										accountId: account.id,
+										transactionType: "rent",
+										price: price,
+										rentDurationHours: hours,
+										rentEndDate: rentEndTimestamp,
+										accountTitleSnapshot: account.ingameName || account.title || "Unknown",
+									},
+								],
+							});
+
+							// Deduct balance from buyer
+							await updateUserBalance(authUser.uid, -price);
+
+							// Create wallet transaction record for buyer
+							const db = getFirestore(getApp());
+							const transactionsRef = collection(db, "wallet_transactions");
+							await addDoc(transactionsRef, {
+								userId: authUser.uid,
+								amount: price,
+								type: "withdraw",
+								method: "balance",
+								transactionCode: `RENT_${account.id}_${Date.now()}`,
+								status: "completed",
+								createdAt: serverTimestamp(),
+							});
+
+							// Add balance to seller
+							if (account.sellerId) {
+								await updateUserBalance(account.sellerId, price);
+
+								// Create wallet transaction record for seller
+								try {
+									await addDoc(transactionsRef, {
+										userId: account.sellerId,
+										amount: price,
+										type: "deposit",
+										method: "rent",
+										transactionCode: `RENT_INCOME_${account.id}_${Date.now()}`,
+										status: "completed",
+										accountId: account.id,
+										accountTitleSnapshot: account.ingameName || account.title || "Unknown",
+										createdAt: serverTimestamp(),
+									});
+									console.log("Seller rent transaction created successfully for:", account.sellerId);
+								} catch (transactionError: any) {
+									console.error("Error creating seller rent transaction:", transactionError);
+									// Don't throw - balance was already updated, just log the error
+								}
+							}
+
+							// Get account credentials
+							try {
+								const credentials = await getAccountCredentials(account.id);
+								if (credentials) {
+									setAccountCredentials(credentials);
+									setShowAccountInfo(true);
+								}
+							} catch (error: any) {
+								console.error("Error getting credentials:", error);
+							}
+
+							ToastAndroid.show("Thuê tài khoản thành công!", ToastAndroid.LONG);
+							await fetchAccount();
+							setRentModalOpen(false);
+						} catch (error: any) {
+							console.error("Error creating rent order:", error);
+							ToastAndroid.show(
+								error.message || "Có lỗi xảy ra khi thuê tài khoản",
+								ToastAndroid.LONG
+							);
+						} finally {
+							setIsProcessing(false);
+						}
+					},
+				},
+			]
+		);
 	};
 
 	const handleReclaim = () => {
@@ -575,7 +824,71 @@ export default function DetailAcc() {
 							</Text>
 						</View>
 
-						{qrUrl && (
+						{userData && (
+							<View style={styles.modalInfo}>
+								<Text style={styles.modalLabel}>Số dư:</Text>
+								<Text style={[styles.modalValue, { 
+									color: userData.balance >= accountDetail.price ? colors.primary : colors.destructive 
+								}]}>
+									{formatPrice(userData.balance)}
+								</Text>
+							</View>
+						)}
+
+						{/* Payment Method Selection */}
+						{!paymentMethod && !showAccountInfo && (
+							<View style={styles.paymentMethodContainer}>
+								<Text style={styles.paymentMethodTitle}>Chọn phương thức thanh toán:</Text>
+								<View style={styles.paymentMethodButtons}>
+									<TouchableOpacity
+										style={styles.paymentMethodButton}
+										onPress={() => {
+											setPaymentMethod("qr");
+											generateQRForBuy();
+										}}
+									>
+										<Text style={styles.paymentMethodButtonText}>QR Code</Text>
+									</TouchableOpacity>
+									{userData && userData.balance >= accountDetail.price && (
+										<TouchableOpacity
+											style={[styles.paymentMethodButton, styles.paymentMethodButtonPrimary]}
+											onPress={handlePayWithBalance}
+											disabled={isProcessing}
+										>
+											{isProcessing ? (
+												<ActivityIndicator size="small" color={colors.primaryForeground} />
+											) : (
+												<Text style={[styles.paymentMethodButtonText, { color: colors.primaryForeground }]}>
+													Số dư
+												</Text>
+											)}
+										</TouchableOpacity>
+									)}
+								</View>
+								{userData && userData.balance < accountDetail.price && (
+									<Text style={styles.insufficientBalanceText}>
+										Số dư không đủ. Vui lòng nạp tiền hoặc thanh toán bằng QR Code.
+									</Text>
+								)}
+							</View>
+						)}
+
+						{/* Account Credentials */}
+						{showAccountInfo && accountCredentials && (
+							<View style={styles.accountInfoContainer}>
+								<Text style={styles.accountInfoTitle}>Thông tin đăng nhập:</Text>
+								<View style={styles.accountInfoRow}>
+									<Text style={styles.accountInfoLabel}>Tên đăng nhập:</Text>
+									<Text style={styles.accountInfoValue}>{accountCredentials.username}</Text>
+								</View>
+								<View style={styles.accountInfoRow}>
+									<Text style={styles.accountInfoLabel}>Mật khẩu:</Text>
+									<Text style={styles.accountInfoValue}>{accountCredentials.password}</Text>
+								</View>
+							</View>
+						)}
+
+						{qrUrl && !showAccountInfo && (
 							<ScrollView style={styles.qrScrollView}>
 								<View style={styles.qrContainer}>
 									<Text style={styles.qrTitle}>Quét mã QR để thanh toán</Text>
@@ -614,17 +927,21 @@ export default function DetailAcc() {
 							</ScrollView>
 						)}
 
-						<TouchableOpacity
-							style={styles.checkPaymentButton}
-							onPress={handleCheckPayment}
-						>
-							<Text style={styles.checkPaymentButtonText}>
-								Kiểm tra thanh toán
-							</Text>
-						</TouchableOpacity>
+						{qrUrl && !showAccountInfo && (
+							<TouchableOpacity
+								style={styles.checkPaymentButton}
+								onPress={handleCheckPayment}
+							>
+								<Text style={styles.checkPaymentButtonText}>
+									Kiểm tra thanh toán
+								</Text>
+							</TouchableOpacity>
+						)}
 
 						<TouchableOpacity style={styles.closeButton} onPress={closeBuyModal}>
-							<Text style={styles.closeButtonText}>Đóng</Text>
+							<Text style={styles.closeButtonText}>
+								{showAccountInfo ? "Đóng" : "Hủy"}
+							</Text>
 						</TouchableOpacity>
 					</View>
 				</View>
@@ -656,9 +973,7 @@ export default function DetailAcc() {
 										<TouchableOpacity
 											key={option.hours}
 											style={styles.rentalOption}
-											onPress={() =>
-												generateQRForRent(option.hours, option.price)
-											}
+											onPress={() => setSelectedRental(option.hours)}
 										>
 											<Clock size={20} color={colors.primary} />
 											<View style={styles.rentalOptionInfo}>
@@ -675,35 +990,101 @@ export default function DetailAcc() {
 							</>
 						)}
 
-						{selectedRental && qrUrl && (
+						{selectedRental && (
+							<>
+								{(() => {
+									const selectedOption = getRentalOptions(accountDetail.rentPricePerHour || 0).find((o) => o.hours === selectedRental);
+									const rentPrice = selectedOption?.price || 0;
+									return (
+										<>
+											<View style={styles.selectedRentalInfo}>
+												<Text style={styles.selectedRentalLabel}>
+													Thời gian thuê:
+												</Text>
+												<Text style={styles.selectedRentalValue}>
+													{selectedOption?.label}
+												</Text>
+											</View>
+											<View style={styles.selectedRentalInfo}>
+												<Text style={styles.selectedRentalLabel}>Giá thuê:</Text>
+												<Text
+													style={[
+														styles.selectedRentalValue,
+														{ color: colors["lol-gold"] },
+													]}
+												>
+													{formatPrice(rentPrice)}
+												</Text>
+											</View>
+											{userData && (
+												<View style={styles.selectedRentalInfo}>
+													<Text style={styles.selectedRentalLabel}>Số dư:</Text>
+													<Text style={[styles.selectedRentalValue, { 
+														color: userData.balance >= rentPrice ? colors.primary : colors.destructive 
+													}]}>
+														{formatPrice(userData.balance)}
+													</Text>
+												</View>
+											)}
+
+											{/* Payment Method Selection for Rent */}
+											{!qrUrl && !showAccountInfo && (
+												<View style={styles.paymentMethodContainer}>
+													<Text style={styles.paymentMethodTitle}>Chọn phương thức thanh toán:</Text>
+													<View style={styles.paymentMethodButtons}>
+														<TouchableOpacity
+															style={styles.paymentMethodButton}
+															onPress={() => generateQRForRent(selectedRental, rentPrice)}
+														>
+															<Text style={styles.paymentMethodButtonText}>QR Code</Text>
+														</TouchableOpacity>
+														{userData && userData.balance >= rentPrice && (
+															<TouchableOpacity
+																style={[styles.paymentMethodButton, styles.paymentMethodButtonPrimary]}
+																onPress={() => handleRentWithBalance(selectedRental, rentPrice)}
+																disabled={isProcessing}
+															>
+																{isProcessing ? (
+																	<ActivityIndicator size="small" color={colors.primaryForeground} />
+																) : (
+																	<Text style={[styles.paymentMethodButtonText, { color: colors.primaryForeground }]}>
+																		Số dư
+																	</Text>
+																)}
+															</TouchableOpacity>
+														)}
+													</View>
+													{userData && userData.balance < rentPrice && (
+														<Text style={styles.insufficientBalanceText}>
+															Số dư không đủ. Vui lòng nạp tiền hoặc thanh toán bằng QR Code.
+														</Text>
+													)}
+												</View>
+											)}
+
+											{/* Account Credentials for Rent */}
+											{showAccountInfo && accountCredentials && (
+												<View style={styles.accountInfoContainer}>
+													<Text style={styles.accountInfoTitle}>Thông tin đăng nhập:</Text>
+													<View style={styles.accountInfoRow}>
+														<Text style={styles.accountInfoLabel}>Tên đăng nhập:</Text>
+														<Text style={styles.accountInfoValue}>{accountCredentials.username}</Text>
+													</View>
+													<View style={styles.accountInfoRow}>
+														<Text style={styles.accountInfoLabel}>Mật khẩu:</Text>
+														<Text style={styles.accountInfoValue}>{accountCredentials.password}</Text>
+													</View>
+												</View>
+											)}
+										</>
+									);
+								})()}
+							</>
+						)}
+
+						{selectedRental && qrUrl && !showAccountInfo && (
 							<ScrollView style={styles.qrScrollView}>
 								<View style={styles.qrContainer}>
-									<View style={styles.selectedRentalInfo}>
-										<Text style={styles.selectedRentalLabel}>
-											Thời gian thuê:
-										</Text>
-										<Text style={styles.selectedRentalValue}>
-											{
-												getRentalOptions(accountDetail.rentPricePerHour || 0).find((o) => o.hours === selectedRental)
-													?.label
-											}
-										</Text>
-									</View>
-									<View style={styles.selectedRentalInfo}>
-										<Text style={styles.selectedRentalLabel}>Giá thuê:</Text>
-										<Text
-											style={[
-												styles.selectedRentalValue,
-												{ color: colors["lol-gold"] },
-											]}
-										>
-											{formatPrice(
-												getRentalOptions(accountDetail.rentPricePerHour || 0).find((o) => o.hours === selectedRental)
-													?.price || 0
-											)}
-										</Text>
-									</View>
-
 									<Text style={styles.qrTitle}>Quét mã QR để thanh toán</Text>
 									<View style={styles.qrImageWrapper}>
 										<Image
@@ -740,7 +1121,7 @@ export default function DetailAcc() {
 							</ScrollView>
 						)}
 
-						{selectedRental && (
+						{selectedRental && qrUrl && !showAccountInfo && (
 							<TouchableOpacity
 								style={styles.checkPaymentButton}
 								onPress={handleCheckPayment}
@@ -753,7 +1134,7 @@ export default function DetailAcc() {
 
 						<TouchableOpacity style={styles.closeButton} onPress={closeRentModal}>
 							<Text style={styles.closeButtonText}>
-								{selectedRental ? "Đóng" : "Hủy"}
+								{showAccountInfo ? "Đóng" : selectedRental ? "Hủy" : "Đóng"}
 							</Text>
 						</TouchableOpacity>
 					</View>
@@ -1199,6 +1580,74 @@ const styles = StyleSheet.create({
 	},
 	selectedRentalValue: {
 		fontSize: 16,
+		fontFamily: "Inter_600SemiBold",
+		color: colors.foreground,
+	},
+	paymentMethodContainer: {
+		gap: 12,
+		marginTop: 8,
+	},
+	paymentMethodTitle: {
+		fontSize: 14,
+		fontFamily: "Inter_500Medium",
+		color: colors.foreground,
+	},
+	paymentMethodButtons: {
+		flexDirection: "row",
+		gap: 12,
+	},
+	paymentMethodButton: {
+		flex: 1,
+		padding: 14,
+		borderRadius: 12,
+		backgroundColor: colors.card,
+		borderWidth: 1,
+		borderColor: colors.border,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	paymentMethodButtonPrimary: {
+		backgroundColor: colors.primary,
+		borderColor: colors.primary,
+	},
+	paymentMethodButtonText: {
+		fontSize: 14,
+		fontFamily: "Inter_600SemiBold",
+		color: colors.foreground,
+	},
+	insufficientBalanceText: {
+		fontSize: 12,
+		color: colors.destructive,
+		textAlign: "center",
+		marginTop: 4,
+	},
+	accountInfoContainer: {
+		marginTop: 16,
+		padding: 16,
+		backgroundColor: `${colors.primary}1A`,
+		borderRadius: 12,
+		borderWidth: 1,
+		borderColor: colors.primary,
+		gap: 12,
+	},
+	accountInfoTitle: {
+		fontSize: 16,
+		fontFamily: "Inter_600SemiBold",
+		color: colors.foreground,
+		marginBottom: 4,
+	},
+	accountInfoRow: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+	},
+	accountInfoLabel: {
+		fontSize: 14,
+		color: colors.mutedForeground,
+		fontFamily: "Inter_500Medium",
+	},
+	accountInfoValue: {
+		fontSize: 14,
 		fontFamily: "Inter_600SemiBold",
 		color: colors.foreground,
 	},

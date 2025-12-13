@@ -41,6 +41,8 @@ const mapFirestoreOrderToOrderCard = async (
 			// Try to get account details for avatar and rank
 			let accountAvatar = "";
 			let accountRank = "Unknown";
+			let sellerId = "";
+			let sellerName = "";
 			try {
 				const account = await getAccountById(item.accountId);
 				if (account) {
@@ -51,9 +53,29 @@ const mapFirestoreOrderToOrderCard = async (
 					accountRank = soloDivision 
 						? `${soloRank} ${soloDivision} - ${soloLP}LP`
 						: soloRank;
+					sellerId = account.sellerId || "";
+					
+					// Get seller name
+					if (sellerId) {
+						try {
+							const seller = await getUserById(sellerId);
+							sellerName = seller?.username || "Unknown";
+						} catch (err) {
+							console.error("Error fetching seller:", err);
+						}
+					}
 				}
 			} catch (err) {
 				console.error("Error fetching account details:", err);
+			}
+
+			// Get buyer name
+			let buyerName = "";
+			try {
+				const buyer = await getUserById(firestoreOrder.buyerId);
+				buyerName = buyer?.username || "Unknown";
+			} catch (err) {
+				console.error("Error fetching buyer:", err);
 			}
 
 			// Calculate rent_days from rentDurationHours
@@ -92,7 +114,9 @@ const mapFirestoreOrderToOrderCard = async (
 				rent_end_date: rentEndDate,
 				created_at: createdAt,
 				updated_at: updatedAt,
-			} as Order;
+				buyer_name: buyerName,
+				seller_name: sellerName,
+			} as Order & { buyer_name?: string; seller_name?: string };
 		})
 	);
 
