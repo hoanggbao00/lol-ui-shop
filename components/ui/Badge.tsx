@@ -29,7 +29,7 @@ export default function Badge(props: BadgeProps = { type: "string", text: "", co
 				paddingVertical: 2,
 				borderRadius: 100,
 				fontSize: 12,
-				fontWeight: "semibold",
+				fontFamily: "Inter_600SemiBold",
 				...props.style,
 			}}
 		>

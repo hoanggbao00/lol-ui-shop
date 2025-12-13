@@ -4,17 +4,18 @@ import type { Item } from "@/types/items";
 import { Image } from "expo-image";
 import { router } from 'expo-router';
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import BuyNowButton from "./BuyNowButton";
 
 interface ListItemProps {
 	item: Item;
 	showBuyNowButton?: boolean;
 	isOwner?: boolean;
+	showBuyerInfo?: boolean; // Show buyer info in dang-ban page
 }
 
 export default function ListItem(props: ListItemProps) {
-	const { item, showBuyNowButton = true, isOwner = false } = props;
+	const { item, showBuyNowButton = true, isOwner = false, showBuyerInfo = false } = props;
 
 	const formatPrice = (price: number) => {
 		return price.toLocaleString("vi-VN", {
@@ -23,8 +24,19 @@ export default function ListItem(props: ListItemProps) {
 		});
 	};
 
+	const handleCardPress = () => {
+		// Sử dụng firestoreId nếu có, nếu không thì dùng id (fallback)
+		const accountId = item.firestoreId || item.id.toString();
+		if (!accountId || accountId === "0") {
+			console.error("Invalid account ID for detail view");
+			return;
+		}
+		router.push(`/detail-acc/${accountId}`);
+	};
+
 	const handlePress = () => {
-		router.push("/detail-acc");
+		// Navigate to detail page when BuyNowButton is pressed
+		handleCardPress();
 	};
 
 	const handleEditPress = () => {
@@ -38,7 +50,11 @@ export default function ListItem(props: ListItemProps) {
 	};
 
 	return (
-		<View style={styles.container}>
+		<TouchableOpacity 
+			style={styles.container} 
+			onPress={handleCardPress}
+			activeOpacity={0.8}
+		>
 			<View style={styles.imageContainer}>
 				<Image source={props.item.image} style={styles.image} />
 				{isOwner && (
@@ -48,6 +64,19 @@ export default function ListItem(props: ListItemProps) {
 				)}
 			</View>
 			<Text style={styles.username}>{props.item.name}</Text>
+			{showBuyerInfo && item.buyerInfo && (
+				<View style={styles.buyerInfoContainer}>
+					<Text style={styles.buyerInfoLabel}>
+						{item.buyerInfo.transactionType === "purchase" ? "Đã bán cho" : "Đang thuê bởi"}:
+					</Text>
+					<Text style={styles.buyerInfoText}>{item.buyerInfo.buyerName || "Unknown"}</Text>
+					{item.buyerInfo.transactionType === "rent" && item.buyerInfo.rentEndDate && (
+						<Text style={styles.rentEndDate}>
+							Hết hạn: {item.buyerInfo.rentEndDate.toLocaleDateString("vi-VN")} {item.buyerInfo.rentEndDate.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+						</Text>
+					)}
+				</View>
+			)}
 			<View style={styles.infoContainer}>
 				<View style={styles.infoContainerLeft}>
 					<Text style={styles.price}>{formatPrice(item.buyPrice || item.rentPrice)}</Text>
@@ -66,10 +95,32 @@ export default function ListItem(props: ListItemProps) {
 						</View>
 					</View>
 				</View>
-				{!isOwner && showBuyNowButton && <BuyNowButton onPress={handlePress} />}
-				{isOwner && <BuyNowButton onPress={handleEditPress} text="SỬA" />}
+				<View style={styles.buttonContainer}>
+					{!isOwner && showBuyNowButton && (
+						<TouchableOpacity 
+							onPress={(e) => {
+								e.stopPropagation();
+								handlePress();
+							}}
+							activeOpacity={0.7}
+						>
+							<BuyNowButton onPress={handlePress} />
+						</TouchableOpacity>
+					)}
+					{isOwner && (
+						<TouchableOpacity 
+							onPress={(e) => {
+								e.stopPropagation();
+								handleEditPress();
+							}}
+							activeOpacity={0.7}
+						>
+							<BuyNowButton onPress={handleEditPress} text="SỬA" />
+						</TouchableOpacity>
+					)}
+				</View>
 			</View>
-		</View>
+		</TouchableOpacity>
 	);
 }
 
@@ -100,7 +151,7 @@ const styles = StyleSheet.create({
 	username: {
 		color: "#02AFAC",
 		fontSize: 16,
-		fontWeight: "bold",
+		fontFamily: "Inter_700Bold",
 		borderWidth: 1,
 		borderStartWidth: 0,
 		borderEndWidth: 0,
@@ -116,14 +167,17 @@ const styles = StyleSheet.create({
 		width: "100%",
 		padding: 8,
 	},
-  infoContainerLeft: {
-    flex: 1,
-    gap: 8,
-  },
+	infoContainerLeft: {
+		flex: 1,
+		gap: 8,
+	},
+	buttonContainer: {
+		// Container for buttons to prevent event bubbling
+	},
 	price: {
 		color: "yellow",
 		fontSize: 20,
-		fontWeight: "bold",
+		fontFamily: "Inter_700Bold",
 		textAlign: "left",
 		width: "100%",
 	},
@@ -144,5 +198,30 @@ const styles = StyleSheet.create({
 	infoText: {
 		color: "#fff",
 		fontSize: 12,
+	},
+	buyerInfoContainer: {
+		width: "100%",
+		paddingHorizontal: 8,
+		paddingVertical: 8,
+		backgroundColor: "rgba(202, 187, 142, 0.1)",
+		borderTopWidth: 1,
+		borderBottomWidth: 1,
+		borderColor: colors["lol-gold"],
+		gap: 4,
+	},
+	buyerInfoLabel: {
+		color: colors["lol-gold"],
+		fontSize: 12,
+		fontFamily: "Inter_600SemiBold",
+	},
+	buyerInfoText: {
+		color: "#fff",
+		fontSize: 14,
+		fontFamily: "Inter_700Bold",
+	},
+	rentEndDate: {
+		color: "#CABB8E",
+		fontSize: 11,
+		fontStyle: "italic",
 	},
 });

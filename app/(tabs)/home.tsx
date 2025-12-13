@@ -34,12 +34,25 @@ const mapAccountToItem = (account: LolAccount): Item => {
 		return "available";
 	};
 
+	// Join ranks with "|" separator
+	const ranks: string[] = [];
+	if (account.soloRank?.tier) {
+		ranks.push(account.soloRank.tier);
+	}
+	if (account.flexRank?.tier) {
+		ranks.push(account.flexRank.tier);
+	}
+	if (account.tftRank?.tier) {
+		ranks.push(account.tftRank.tier);
+	}
+	const rankString = ranks.length > 0 ? ranks.join(" | ") : "Unranked";
+
 	return {
 		id: account.id ? parseInt(account.id.slice(0, 8), 16) || 0 : 0,
 		firestoreId: account.id || undefined, // Lưu Firestore ID gốc
 		name: account.ingameName || account.title || "Unknown",
 		description: account.description || "",
-		rank: account.soloRank?.tier || account.flexRank?.tier || "Unranked",
+		rank: rankString,
 		level: account.level || 0,
 		championCount: account.champCount || 0,
 		skinCount: account.skinCount || 0,
@@ -103,7 +116,6 @@ export default function Index() {
 
 			if (hasFilters) {
 				// Use filterAccounts with filters
-				console.log("Filtering with:", currentFilters, "Request ID:", currentRequestId);
 				isFilteringRef.current = true;
 				accounts = await filterAccounts({
 					rankTier: currentFilters.rank,
@@ -114,10 +126,8 @@ export default function Index() {
 					minLevel: currentFilters.minLevel,
 					maxLevel: currentFilters.maxLevel,
 				});
-				console.log("Filtered accounts:", accounts.length, "Request ID:", currentRequestId);
 			} else {
 				// Use getAvailableAccounts without filters
-				console.log("Fetching all accounts (no filters) Request ID:", currentRequestId);
 				isFilteringRef.current = false;
 				const result = await getAvailableAccounts(50);
 				accounts = result.accounts;
@@ -125,12 +135,10 @@ export default function Index() {
 
 			// Check if this is still the latest request
 			if (currentRequestId !== requestIdRef.current) {
-				console.log("Ignoring stale request result - request ID:", currentRequestId, "current:", requestIdRef.current);
 				return;
 			}
 
 			const items = accounts.map(mapAccountToItem);
-			console.log("Mapped items:", items.length, "Request ID:", currentRequestId);
 			setData(items);
 
 			// Create map of owner IDs
@@ -203,11 +211,9 @@ export default function Index() {
 			const timeSinceLastFetch = now - lastFetchTimeRef.current;
 
 			if (!initializing && !hasFilters && !isFilteringRef.current && timeSinceLastFetch > 1000) {
-				console.log("Refetching on focus (no filters)");
 				lastFetchTimeRef.current = now;
 				fetchAccounts();
 			} else {
-				console.log("Skipping refetch on focus - hasFilters:", hasFilters, "isFiltering:", isFilteringRef.current, "timeSinceLastFetch:", timeSinceLastFetch);
 			}
 		}, [fetchAccounts, initializing])
 	);
@@ -339,7 +345,7 @@ const styles = StyleSheet.create({
 	retryButtonText: {
 		color: "#000",
 		fontSize: 16,
-		fontWeight: "bold",
+		fontFamily: "Inter_700Bold",
 	},
 	errorSubText: {
 		color: "#CABB8E",

@@ -9,7 +9,7 @@ import {
 	XCircle,
 } from "lucide-react-native";
 import type React from "react";
-import { Text, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 
 interface StatusConfig {
 	label: string;
@@ -59,13 +59,14 @@ const statusConfig: Record<OrderStatus, StatusConfig> = {
 
 interface OrderCardProps {
 	order: Order;
+	onPress?: (order: Order) => void;
 }
 
-export default function OrderCard({ order }: OrderCardProps) {
+export default function OrderCard({ order, onPress }: OrderCardProps) {
 	const status = statusConfig[order.status];
 
 	return (
-		<View
+		<TouchableOpacity
 			style={{
 				backgroundColor: `${colors.card}99`,
 				borderRadius: 16,
@@ -73,6 +74,8 @@ export default function OrderCard({ order }: OrderCardProps) {
 				borderColor: `${colors.border}80`,
 				padding: 16,
 			}}
+			onPress={() => onPress?.(order)}
+			activeOpacity={0.7}
 		>
 			<View
 				style={{
@@ -121,7 +124,7 @@ export default function OrderCard({ order }: OrderCardProps) {
 							<Text
 								style={{
 									fontSize: 16,
-									fontWeight: "600",
+									fontFamily: "Inter_600SemiBold",
 									color: colors.foreground,
 								}}
 								numberOfLines={1}
@@ -157,7 +160,7 @@ export default function OrderCard({ order }: OrderCardProps) {
 							<Text
 								style={{
 									fontSize: 11,
-									fontWeight: "500",
+									fontFamily: "Inter_500Medium",
 									color: status.color,
 								}}
 							>
@@ -188,7 +191,7 @@ export default function OrderCard({ order }: OrderCardProps) {
 							<Text
 								style={{
 									fontSize: 11,
-									fontWeight: "500",
+									fontFamily: "Inter_500Medium",
 									color:
 										order.type === "purchase" ? colors.primary : colors.accent,
 								}}
@@ -202,7 +205,7 @@ export default function OrderCard({ order }: OrderCardProps) {
 						<Text
 							style={{
 								fontSize: 16,
-								fontWeight: "bold",
+								fontFamily: "Inter_700Bold",
 								color: colors.primary,
 							}}
 						>
@@ -227,6 +230,6 @@ export default function OrderCard({ order }: OrderCardProps) {
 					</Text>
 				</View>
 			</View>
-		</View>
+		</TouchableOpacity>
 	);
 }

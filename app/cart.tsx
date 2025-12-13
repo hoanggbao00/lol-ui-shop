@@ -1,12 +1,20 @@
+import { getAccountById } from "@/actions/account.action";
+import { getUserOrders } from "@/actions/order.action";
+import { getUserById } from "@/actions/user.action";
 import Background from "@/components/Background";
 import OrderCard from "@/components/cart/OrderCard";
+import OrderDetailSheet from "@/components/cart/OrderDetailSheet";
 import { colors } from "@/libs/colors";
+import type { Order as FirestoreOrder } from "@/types";
 import type { Order } from "@/types/order";
-import type { User as UserType } from "@/types/user";
-import { router } from "expo-router";
+import { getApp } from "@react-native-firebase/app";
+import type { FirebaseAuthTypes } from "@react-native-firebase/auth";
+import { getAuth, onAuthStateChanged } from "@react-native-firebase/auth";
+import { router, useFocusEffect } from "expo-router";
 import { ArrowLeft, History, Minus, Plus, Wallet } from "lucide-react-native";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
+	ActivityIndicator,
 	ScrollView,
 	StyleSheet,
 	Text,
@@ -14,119 +22,167 @@ import {
 	View,
 } from "react-native";
 
-// Mock user data
-const mockUser: UserType = {
-	user_id: 12,
-	username: "Nam Nguyen",
-	email: "nam@example.com",
-	avatar_url: "default_avatar.png",
-	phone: "0123456789",
-	role: "user",
-	balance: 2500000,
-	bank_name: "Techcombank",
-	bank_account_number: "1234567890",
-	bank_account_holder: "NGUYEN VAN NAM",
-	created_at: new Date().toISOString(),
-	is_active: true,
+// Helper function to convert Firestore Order to OrderCard format
+const mapFirestoreOrderToOrderCard = async (
+	firestoreOrder: FirestoreOrder
+): Promise<Order[]> => {
+	if (!firestoreOrder.items || firestoreOrder.items.length === 0) {
+		return [];
+	}
+
+	// Map each item in the order to a separate OrderCard
+	const mappedOrders = await Promise.all(
+		firestoreOrder.items.map(async (item, index) => {
+			const orderId = firestoreOrder.id || "";
+			const numericOrderId = parseInt(orderId.slice(0, 8), 16) || 0;
+			const numericAccountId = parseInt(item.accountId.slice(0, 8), 16) || 0;
+			const numericUserId = parseInt(firestoreOrder.buyerId.slice(0, 8), 16) || 0;
+
+			// Try to get account details for avatar and rank
+			let accountAvatar = "";
+			let accountRank = "Unknown";
+			try {
+				const account = await getAccountById(item.accountId);
+				if (account) {
+					accountAvatar = account.thumbnailUrl || "";
+					const soloRank = account.soloRank?.tier || account.flexRank?.tier || "Unranked";
+					const soloDivision = account.soloRank?.division || account.flexRank?.division || "";
+					const soloLP = account.soloRank?.lp || account.flexRank?.lp || 0;
+					accountRank = soloDivision 
+						? `${soloRank} ${soloDivision} - ${soloLP}LP`
+						: soloRank;
+				}
+			} catch (err) {
+				console.error("Error fetching account details:", err);
+			}
+
+			// Calculate rent_days from rentDurationHours
+			const rentDays = item.rentDurationHours 
+				? Math.ceil(item.rentDurationHours / 24) 
+				: undefined;
+
+			// Format rent_end_date
+			const rentEndDate = item.rentEndDate 
+				? item.rentEndDate.toDate().toISOString() 
+				: undefined;
+
+			// Format dates
+			const createdAt = firestoreOrder.createdAt 
+				? firestoreOrder.createdAt.toDate().toISOString() 
+				: new Date().toISOString();
+			const updatedAt = firestoreOrder.updatedAt 
+				? firestoreOrder.updatedAt.toDate().toISOString() 
+				: createdAt;
+
+			// Get account name from snapshot or default
+			const accountName = item.accountTitleSnapshot || "Unknown";
+
+			return {
+				order_id: numericOrderId + index, // Unique ID for each item
+				user_id: numericUserId,
+				account_id: numericAccountId,
+				account_firestore_id: item.accountId, // Store Firestore ID for credentials
+				account_name: accountName,
+				account_avatar: accountAvatar || "https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/5367.png",
+				rank: accountRank,
+				type: item.transactionType === "purchase" ? "purchase" : "rent",
+				status: firestoreOrder.status,
+				amount: item.price,
+				rent_days: rentDays,
+				rent_end_date: rentEndDate,
+				created_at: createdAt,
+				updated_at: updatedAt,
+			} as Order;
+		})
+	);
+
+	return mappedOrders;
 };
 
-// Mock orders data
-const mockOrders: Order[] = [
-	{
-		order_id: 1,
-		user_id: 1,
-		account_id: 101,
-		account_name: "Tài khoản LOL #1234",
-		account_avatar:
-			"https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/5367.png",
-		rank: "Thách Đấu - 1200LP",
-		type: "purchase",
-		status: "paid",
-		amount: 5000000,
-		created_at: "2024-01-15T10:30:00Z",
-		updated_at: "2024-01-15T10:35:00Z",
-	},
-	{
-		order_id: 2,
-		user_id: 1,
-		account_id: 102,
-		account_name: "Tài khoản LOL #5678",
-		account_avatar:
-			"https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/5066.png",
-		rank: "Cao Thủ - 450LP",
-		type: "rent",
-		status: "renting",
-		amount: 200000,
-		rent_days: 7,
-		rent_end_date: "2024-01-22T10:30:00Z",
-		created_at: "2024-01-14T15:00:00Z",
-		updated_at: "2024-01-14T15:05:00Z",
-	},
-	{
-		order_id: 3,
-		user_id: 1,
-		account_id: 103,
-		account_name: "Tài khoản LOL #9012",
-		account_avatar:
-			"https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/4648.png",
-		rank: "Kim Cương I",
-		type: "purchase",
-		status: "pending",
-		amount: 1500000,
-		created_at: "2024-01-16T08:00:00Z",
-		updated_at: "2024-01-16T08:00:00Z",
-	},
-	{
-		order_id: 4,
-		user_id: 1,
-		account_id: 104,
-		account_name: "Tài khoản LOL #3456",
-		account_avatar:
-			"https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/4568.png",
-		rank: "Bạch Kim II",
-		type: "rent",
-		status: "completed",
-		amount: 100000,
-		rent_days: 3,
-		created_at: "2024-01-10T12:00:00Z",
-		updated_at: "2024-01-13T12:00:00Z",
-	},
-	{
-		order_id: 5,
-		user_id: 1,
-		account_id: 105,
-		account_name: "Tài khoản LOL #7890",
-		account_avatar:
-			"https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/5203.png",
-		rank: "Kim Cương IV",
-		type: "purchase",
-		status: "refunded",
-		amount: 800000,
-		created_at: "2024-01-08T09:00:00Z",
-		updated_at: "2024-01-09T14:00:00Z",
-	},
-	{
-		order_id: 6,
-		user_id: 1,
-		account_id: 106,
-		account_name: "Tài khoản LOL #2468",
-		account_avatar:
-			"https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/4892.png",
-		rank: "Vàng I",
-		type: "rent",
-		status: "cancelled",
-		amount: 50000,
-		rent_days: 1,
-		created_at: "2024-01-05T16:00:00Z",
-		updated_at: "2024-01-05T16:30:00Z",
-	},
-];
-
 export default function Cart() {
+	const [initializing, setInitializing] = useState(true);
+	const [authUser, setAuthUser] = useState<FirebaseAuthTypes.User | null>(null);
+	const [userBalance, setUserBalance] = useState(0);
+	const [orders, setOrders] = useState<Order[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
 	const [activeTab, setActiveTab] = useState<"all" | "purchase" | "rent">("all");
+	const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+	const [sheetVisible, setSheetVisible] = useState(false);
 
-	const purchaseOrders = mockOrders.filter((o) => o.type === "purchase");
-	const rentOrders = mockOrders.filter((o) => o.type === "rent");
+	const handleAuthStateChanged = useCallback((_user: FirebaseAuthTypes.User | null) => {
+		setAuthUser(_user);
+		if (initializing) setInitializing(false);
+	}, [initializing]);
+
+	useEffect(() => {
+		const app = getApp();
+		const auth = getAuth(app);
+		const subscriber = onAuthStateChanged(auth, handleAuthStateChanged);
+		return subscriber;
+	}, [handleAuthStateChanged]);
+
+	const fetchUserData = useCallback(async () => {
+		if (!authUser?.uid) {
+			setLoading(false);
+			return;
+		}
+
+		try {
+			const user = await getUserById(authUser.uid);
+			if (user) {
+				setUserBalance(user.balance);
+			}
+		} catch (err) {
+			console.error("Error fetching user data:", err);
+		}
+	}, [authUser]);
+
+	const fetchOrders = useCallback(async () => {
+		if (!authUser?.uid) {
+			setLoading(false);
+			return;
+		}
+
+		try {
+			setLoading(true);
+			setError(null);
+			const firestoreOrders = await getUserOrders(authUser.uid);
+			
+			// Map Firestore orders to OrderCard format
+			const mappedOrdersPromises = firestoreOrders.map((firestoreOrder) =>
+				mapFirestoreOrderToOrderCard(firestoreOrder)
+			);
+			const mappedOrdersArrays = await Promise.all(mappedOrdersPromises);
+			const mappedOrders = mappedOrdersArrays.flat();
+
+			setOrders(mappedOrders);
+		} catch (err) {
+			console.error("Error fetching orders:", err);
+			setError("Không thể tải lịch sử giao dịch");
+		} finally {
+			setLoading(false);
+		}
+	}, [authUser]);
+
+	useEffect(() => {
+		if (!initializing) {
+			fetchUserData();
+			fetchOrders();
+		}
+	}, [initializing, fetchUserData, fetchOrders]);
+
+	useFocusEffect(
+		useCallback(() => {
+			if (!initializing) {
+				fetchUserData();
+				fetchOrders();
+			}
+		}, [initializing, fetchUserData, fetchOrders])
+	);
+
+	const purchaseOrders = orders.filter((o) => o.type === "purchase");
+	const rentOrders = orders.filter((o) => o.type === "rent");
 
 	const getFilteredOrders = () => {
 		switch (activeTab) {
@@ -135,7 +191,7 @@ export default function Cart() {
 			case "rent":
 				return rentOrders;
 			default:
-				return mockOrders;
+				return orders;
 		}
 	};
 
@@ -177,7 +233,7 @@ export default function Cart() {
 							<Text style={styles.balanceLabel}>Số dư hiện tại</Text>
 						</View>
 						<Text style={styles.balanceAmount}>
-							{mockUser.balance.toLocaleString("vi-VN")}
+							{userBalance.toLocaleString("vi-VN")}
 							<Text style={styles.balanceCurrency}>đ</Text>
 						</Text>
 						<View style={styles.balanceActions}>
@@ -218,7 +274,7 @@ export default function Cart() {
 									activeTab === "all" && styles.tabTextActive,
 								]}
 							>
-								Tất cả ({mockOrders.length})
+								Tất cả ({orders.length})
 							</Text>
 						</TouchableOpacity>
 						<TouchableOpacity
@@ -250,13 +306,46 @@ export default function Cart() {
 					</View>
 
 					{/* Orders List */}
-					<View style={styles.ordersList}>
-						{getFilteredOrders().map((order) => (
-							<OrderCard key={order.order_id} order={order} />
-						))}
-					</View>
+					{loading ? (
+						<View style={styles.loadingContainer}>
+							<ActivityIndicator size="large" color={colors.primary} />
+							<Text style={styles.loadingText}>Đang tải...</Text>
+						</View>
+					) : error ? (
+						<View style={styles.errorContainer}>
+							<Text style={styles.errorText}>{error}</Text>
+						</View>
+					) : (
+						<View style={styles.ordersList}>
+							{getFilteredOrders().length === 0 ? (
+								<View style={styles.emptyContainer}>
+									<Text style={styles.emptyText}>Chưa có giao dịch nào</Text>
+								</View>
+							) : (
+								getFilteredOrders().map((order, index) => (
+									<OrderCard 
+										key={`${order.order_id}-${index}`} 
+										order={order}
+										onPress={(order) => {
+											setSelectedOrder(order);
+											setSheetVisible(true);
+										}}
+									/>
+								))
+							)}
+						</View>
+					)}
 				</View>
 			</ScrollView>
+
+			<OrderDetailSheet
+				visible={sheetVisible}
+				order={selectedOrder}
+				onClose={() => {
+					setSheetVisible(false);
+					setSelectedOrder(null);
+				}}
+			/>
 		</View>
 	);
 }
@@ -289,7 +378,7 @@ const styles = StyleSheet.create({
 	},
 	headerTitle: {
 		fontSize: 18,
-		fontWeight: "600",
+		fontFamily: "Inter_700Bold",
 		color: colors.foreground,
 	},
 	scrollView: {
@@ -343,7 +432,7 @@ const styles = StyleSheet.create({
 	},
 	balanceAmount: {
 		fontSize: 32,
-		fontWeight: "bold",
+		fontFamily: "Inter_700Bold",
 		color: colors.foreground,
 		marginBottom: 16,
 	},
@@ -368,7 +457,7 @@ const styles = StyleSheet.create({
 	},
 	depositButtonText: {
 		fontSize: 14,
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
 		color: colors.primaryForeground,
 	},
 	withdrawButton: {
@@ -385,7 +474,7 @@ const styles = StyleSheet.create({
 	},
 	withdrawButtonText: {
 		fontSize: 14,
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
 		color: colors.foreground,
 	},
 	historySection: {
@@ -398,7 +487,7 @@ const styles = StyleSheet.create({
 	},
 	historyTitle: {
 		fontSize: 18,
-		fontWeight: "600",
+		fontFamily: "Inter_700Bold",
 		color: colors.foreground,
 	},
 	tabs: {
@@ -420,14 +509,43 @@ const styles = StyleSheet.create({
 	},
 	tabText: {
 		fontSize: 12,
-		fontWeight: "500",
+		fontFamily: "Inter_500Medium",
 		color: colors.mutedForeground,
 	},
 	tabTextActive: {
 		color: colors.primaryForeground,
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
 	},
 	ordersList: {
 		gap: 12,
+	},
+	loadingContainer: {
+		padding: 32,
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 16,
+	},
+	loadingText: {
+		color: colors.mutedForeground,
+		fontSize: 14,
+	},
+	errorContainer: {
+		padding: 32,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	errorText: {
+		color: colors.destructive,
+		fontSize: 14,
+		textAlign: "center",
+	},
+	emptyContainer: {
+		padding: 32,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	emptyText: {
+		color: colors.mutedForeground,
+		fontSize: 14,
 	},
 });

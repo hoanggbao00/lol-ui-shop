@@ -175,31 +175,29 @@ export default function NewAccountPage() {
 	};
 
 	const handleSubmit = async () => {
-		console.log('=== SUBMIT STARTED ===');
 		
 		// Validate form
 		const error = validateForm();
 		if (error) {
-			console.log('Validation error:', error);
 			ToastAndroid.show(error, ToastAndroid.LONG);
 			return;
 		}
 
-		console.log('Validation passed');
 		setSubmitting(true);
 		
 		try {
-			// 1. Upload image first
-			setUploading(true);
-			// if (!image) {
-			// 	throw new Error('No image selected');
-			// }
-			console.log('Starting image upload...');
-			// const thumbnailUrl = await uploadImageToStorage(image, 'account_images');
-			setUploading(false);
+			// 1. Upload image first (if image selected)
+			let thumbnailUrl: string | undefined = undefined;
+			if (image && !image.startsWith('http')) {
+				setUploading(true);
+				thumbnailUrl = await uploadImageToStorage(image, 'account_images');
+				setUploading(false);
+			} else if (image && image.startsWith('http')) {
+				// Keep existing image URL if it's already a URL
+				thumbnailUrl = image;
+			}
 
 			// 2. Prepare rank data
-			console.log('Preparing rank data...');
 			const soloRank = formData.soloRank && formData.soloDivision ? {
 				tier: formData.soloRank,
 				division: formData.soloDivision,
@@ -214,9 +212,15 @@ export default function NewAccountPage() {
 				wins: Number(formData.flexWins) || 0,
 			} : undefined;
 
+			const tftRank = formData.tftRank && formData.tftDivision ? {
+				tier: formData.tftRank,
+				division: formData.tftDivision,
+				lp: Number(formData.tftLP) || 0,
+				wins: Number(formData.tftWins) || 0,
+			} : undefined;
+
 			// 3. Create account data
-			console.log('Preparing account data...');
-			const accountData = {
+			const accountData: any = {
 				title: formData.title.trim() || formData.username.trim(),
 				level: formData.level ? Number(formData.level) : undefined,
 				ingameName: formData.username.trim(),
@@ -225,20 +229,31 @@ export default function NewAccountPage() {
 				region: formData.region || undefined,
 				champCount: formData.champions ? Number(formData.champions) : undefined,
 				skinCount: formData.skins ? Number(formData.skins) : undefined,
+				blueEssence: formData.blueEssence ? Number(formData.blueEssence) : undefined,
+				orangeEssence: formData.orangeEssence ? Number(formData.orangeEssence) : undefined,
+				rp: formData.rp ? Number(formData.rp) : undefined,
+				honorLevel: formData.honorLevel ? Number(formData.honorLevel) : undefined,
+				masteryPoints: formData.masteryPoints ? Number(formData.masteryPoints) : undefined,
 				soloRank,
 				flexRank,
+				tftRank,
 				loginUsername: formData.loginUsername.trim(),
 				loginPassword: formData.loginPassword.trim(),
 				buyPrice: forSale && formData.price ? Number(formData.price.replace(/,/g, '')) : undefined,
 				rentPricePerHour: forRent && formData.rentPricePerHour ? Number(formData.rentPricePerHour.replace(/,/g, '')) : undefined,
 			};
 
-			console.log('Account data prepared:', JSON.stringify(accountData, null, 2));
+			// Only include thumbnailUrl if it's set (required field)
+			if (thumbnailUrl) {
+				accountData.thumbnailUrl = thumbnailUrl;
+			} else {
+				// Set a default placeholder if no image
+				accountData.thumbnailUrl = "https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/5367.png";
+			}
+
 
 			// 4. Call API to create account
-			console.log('Calling createAccount API...');
-			const accountId = await createAccount(accountData);
-			console.log('Account created successfully with ID:', accountId);
+			 await createAccount(accountData as any);
 
 			// 5. Show success message
 			const listingTypes = [];
@@ -248,17 +263,11 @@ export default function NewAccountPage() {
 			ToastAndroid.show(`Đăng tin thành công! Tài khoản đã được đăng ${listingTypes.join(" và ")}`, ToastAndroid.LONG);
 			
 			// 6. Navigate back
-			console.log('Navigating back...');
 			router.back();
 		} catch (error: any) {
-			console.error('=== ERROR IN SUBMIT ===');
-			console.error('Error details:', error);
-			console.error('Error message:', error?.message);
-			console.error('Error stack:', error?.stack);
 			const errorMessage = error?.message || 'Có lỗi xảy ra. Vui lòng thử lại.';
 			ToastAndroid.show(errorMessage, ToastAndroid.LONG);
 		} finally {
-			console.log('=== SUBMIT FINISHED ===');
 			setSubmitting(false);
 			setUploading(false);
 		}
@@ -724,7 +733,7 @@ const styles = StyleSheet.create({
 	},
 	title: {
 		fontSize: 18,
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
 		color: colors.foreground,
 	},
 	scrollView: {
@@ -746,13 +755,13 @@ const styles = StyleSheet.create({
 	},
 	sectionLabel: {
 		fontSize: 14,
-		fontWeight: "500",
+		fontFamily: "Inter_500Medium",
 		color: colors.foreground,
 		marginBottom: 4,
 	},
 	sectionTitle: {
 		fontSize: 16,
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
 		color: colors.foreground,
 	},
 	checkboxContainer: {
@@ -785,7 +794,7 @@ const styles = StyleSheet.create({
 	},
 	checkboxLabel: {
 		fontSize: 14,
-		fontWeight: "500",
+		fontFamily: "Inter_500Medium",
 		color: colors.foreground,
 	},
 	imageUploadContainer: {
@@ -833,7 +842,7 @@ const styles = StyleSheet.create({
 	},
 	fieldLabel: {
 		fontSize: 14,
-		fontWeight: "500",
+		fontFamily: "Inter_500Medium",
 		color: colors.foreground,
 	},
 	textInput: {
@@ -876,7 +885,7 @@ const styles = StyleSheet.create({
 	},
 	submitButtonText: {
 		fontSize: 16,
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
 		color: colors.primaryForeground,
 	},
 	required: {

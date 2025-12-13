@@ -1,12 +1,19 @@
+import { getAccountById } from "@/actions/account.action";
+import { reclaimAccount } from "@/actions/order.action";
+import { getUserById } from "@/actions/user.action";
 import Background from "@/components/Background";
 import RankCard from "@/components/detail-account/RankCard";
 import StatBadge from "@/components/detail-account/StatBadge";
 import { ADMIN_BANK } from "@/libs/admin-bank";
 import { colors } from "@/libs/colors";
 import { getRanksArray } from '@/libs/get-ranks-array';
+import type { LolAccount } from "@/types";
 import type { AccountDetail } from "@/types/account";
+import { getApp } from "@react-native-firebase/app";
+import type { FirebaseAuthTypes } from "@react-native-firebase/auth";
+import { getAuth, onAuthStateChanged } from "@react-native-firebase/auth";
 import { Image } from "expo-image";
-import { router } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import {
 	ArrowLeft,
 	Clock,
@@ -18,8 +25,10 @@ import {
 	Trophy,
 	Users
 } from "lucide-react-native";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
+	ActivityIndicator,
+	Alert,
 	Modal,
 	ScrollView,
 	StyleSheet,
@@ -29,44 +38,40 @@ import {
 	View
 } from "react-native";
 
-// Mock data based on the new schema
-const mockAccount: AccountDetail = {
-	id: "acc-001",
-	username: "mid24",
-	title: "Acc Chính Chủ",
-	level: 902,
-	avatarUrl:
-		"https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/5799.png",
-	server: "VN",
-	
-	// Stats
-	champions: 120,
-	skins: 85,
-	blueEssence: 15000,
-	orangeEssence: 3200,
-	rp: 0,
-	honorLevel: 4,
-	masteryPoints: 1153,
-	region: "SHURIMA",
-	
-	// Ranks
-	soloRank: "Emerald",
-	soloDivision: "IV",
-	soloLP: 84,
-	soloWins: 313,
-	flexRank: "Emerald",
-	flexDivision: "III",
-	flexLP: 55,
-	flexWins: 200,
-	tftRank: "Gold",
-	tftDivision: "III",
-	tftLP: 99,
-	tftWins: 37,
-	
-	// Pricing
-	price: 2500000,
-	rentPricePerHour: 10000,
-	description: "Acc chính chủ, full tướng, nhiều skin hiếm",
+// Helper function to convert LolAccount to AccountDetail
+const mapLolAccountToAccountDetail = (account: LolAccount): AccountDetail => {
+	return {
+		id: account.id || "",
+		username: account.ingameName || account.title || "Unknown",
+		title: account.title,
+		level: account.level || 0,
+		avatarUrl: account.thumbnailUrl || "https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/5367.png",
+		server: account.server,
+		champions: account.champCount || 0,
+		skins: account.skinCount || 0,
+		blueEssence: account.blueEssence || 0,
+		orangeEssence: account.orangeEssence || 0,
+		rp: account.rp,
+		honorLevel: account.honorLevel || 0,
+		masteryPoints: account.masteryPoints || 0,
+		region: account.region || "",
+		// Map ranks by type (solo, flex, tft)
+		soloRank: account.soloRank?.tier,
+		soloDivision: account.soloRank?.division,
+		soloLP: account.soloRank?.lp,
+		soloWins: account.soloRank?.wins,
+		flexRank: account.flexRank?.tier,
+		flexDivision: account.flexRank?.division,
+		flexLP: account.flexRank?.lp,
+		flexWins: account.flexRank?.wins,
+		tftRank: account.tftRank?.tier,
+		tftDivision: account.tftRank?.division,
+		tftLP: account.tftRank?.lp,
+		tftWins: account.tftRank?.wins,
+		price: account.buyPrice || 0,
+		rentPricePerHour: account.rentPricePerHour || 0,
+		description: account.description || "",
+	};
 };
 
 const formatPrice = (price: number) => {
@@ -80,8 +85,8 @@ const formatPrice = (price: number) => {
 const MOCK_USER_ID = 12;
 
 // Rental duration options (in hours)
-const getRentalOptions = () => {
-	const basePrice = mockAccount.rentPricePerHour || 1000;
+const getRentalOptions = (rentPricePerHour: number) => {
+	const basePrice = rentPricePerHour || 1000;
 	return [
 		{ hours: 48, label: "48 giờ", price: basePrice * 48 },
 		{ hours: 72, label: "72 giờ", price: basePrice * 72 },
@@ -91,10 +96,77 @@ const getRentalOptions = () => {
 };
 
 export default function DetailAcc() {
+	const { id } = useLocalSearchParams();
+	const [account, setAccount] = useState<LolAccount | null>(null);
+	const [accountDetail, setAccountDetail] = useState<AccountDetail | null>(null);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
 	const [buyModalOpen, setBuyModalOpen] = useState(false);
 	const [rentModalOpen, setRentModalOpen] = useState(false);
 	const [qrUrl, setQrUrl] = useState("");
 	const [selectedRental, setSelectedRental] = useState<number | null>(null);
+	const [authUser, setAuthUser] = useState<FirebaseAuthTypes.User | null>(null);
+	const [userData, setUserData] = useState<any>(null);
+	const [isOwnerOrAdmin, setIsOwnerOrAdmin] = useState(false);
+	const [reclaiming, setReclaiming] = useState(false);
+
+	const fetchAccount = useCallback(async () => {
+		if (!id || typeof id !== "string") {
+			setError("ID tài khoản không hợp lệ");
+			setLoading(false);
+			return;
+		}
+
+		try {
+			setLoading(true);
+			setError(null);
+			const accountData = await getAccountById(id);
+			if (!accountData) {
+				setError("Không tìm thấy tài khoản");
+				return;
+			}
+			setAccount(accountData);
+			const mappedDetail = mapLolAccountToAccountDetail(accountData);
+			setAccountDetail(mappedDetail);
+
+			// Check if user is owner or admin
+			if (authUser?.uid) {
+				const user = await getUserById(authUser.uid);
+				setUserData(user);
+				const isOwner = accountData.sellerId === authUser.uid;
+				const isAdmin = user?.role === "admin";
+				setIsOwnerOrAdmin(isOwner || isAdmin);
+			}
+		} catch (err: any) {
+			console.error("Error fetching account:", err);
+			setError(err.message || "Không thể tải thông tin tài khoản");
+		} finally {
+			setLoading(false);
+		}
+	}, [id, authUser]);
+
+	useEffect(() => {
+		const app = getApp();
+		const auth = getAuth(app);
+		const subscriber = onAuthStateChanged(auth, (user) => {
+			setAuthUser(user);
+		});
+		return subscriber;
+	}, []);
+
+	useEffect(() => {
+		if (authUser) {
+			fetchAccount();
+		}
+	}, [fetchAccount, authUser]);
+
+	useFocusEffect(
+		useCallback(() => {
+			if (authUser) {
+				fetchAccount();
+			}
+		}, [fetchAccount, authUser])
+	);
 
 	const handleBuy = () => {
 		setBuyModalOpen(true);
@@ -108,14 +180,16 @@ export default function DetailAcc() {
 	};
 
 	const generateQRForBuy = () => {
-		const amount = mockAccount.price;
-		const content = `MUAACC ${mockAccount.id} ${MOCK_USER_ID}`;
+		if (!account || !account.id) return;
+		const amount = account.buyPrice || 0;
+		const content = `MUAACC ${account.id} ${account.sellerId}`;
 		const qrApiUrl = `https://img.vietqr.io/image/${ADMIN_BANK.bin}-${ADMIN_BANK.account_number}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(content)}&accountName=${encodeURIComponent(ADMIN_BANK.account_name)}`;
 		setQrUrl(qrApiUrl);
 	};
 
 	const generateQRForRent = (hours: number, price: number) => {
-		const content = `THUEACC ${mockAccount.id} ${hours}H ${MOCK_USER_ID}`;
+		if (!account || !account.id) return;
+		const content = `THUEACC ${account.id} ${hours}H ${account.sellerId}`;
 		const qrApiUrl = `https://img.vietqr.io/image/${ADMIN_BANK.bin}-${ADMIN_BANK.account_number}-compact2.png?amount=${price}&addInfo=${encodeURIComponent(content)}&accountName=${encodeURIComponent(ADMIN_BANK.account_name)}`;
 		setQrUrl(qrApiUrl);
 		setSelectedRental(hours);
@@ -139,6 +213,75 @@ export default function DetailAcc() {
 		);
 		// TODO: Implement payment verification
 	};
+
+	const handleReclaim = () => {
+		if (!account || account.status !== "renting") {
+			ToastAndroid.show("Tài khoản không đang được thuê", ToastAndroid.SHORT);
+			return;
+		}
+
+		Alert.alert(
+			"Xác nhận thu hồi",
+			"Bạn có chắc chắn muốn thu hồi tài khoản này? Tiền sẽ được hoàn lại cho người thuê và trừ tiền của bạn.",
+			[
+				{
+					text: "Hủy",
+					style: "cancel",
+				},
+				{
+					text: "Xác nhận",
+					style: "destructive",
+					onPress: async () => {
+						if (!account?.id) return;
+						try {
+							setReclaiming(true);
+							await reclaimAccount(account.id);
+							ToastAndroid.show("Thu hồi tài khoản thành công", ToastAndroid.LONG);
+							// Refresh account data
+							await fetchAccount();
+						} catch (err: any) {
+							console.error("Error reclaiming account:", err);
+							ToastAndroid.show(
+								err.message || "Không thể thu hồi tài khoản",
+								ToastAndroid.LONG
+							);
+						} finally {
+							setReclaiming(false);
+						}
+					},
+				},
+			]
+		);
+	};
+
+	if (loading) {
+		return (
+			<View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+				<Background />
+				<ActivityIndicator size="large" color={colors["lol-gold"]} />
+				<Text style={{ color: colors.mutedForeground, marginTop: 16 }}>
+					Đang tải thông tin tài khoản...
+				</Text>
+			</View>
+		);
+	}
+
+	if (error || !account || !accountDetail) {
+		return (
+			<View style={[styles.container, { justifyContent: "center", alignItems: "center", padding: 32 }]}>
+				<Background />
+				<Text style={{ color: colors.destructive, fontSize: 16, textAlign: "center" }}>
+					{error || "Không tìm thấy tài khoản"}
+				</Text>
+				<TouchableOpacity
+					onPress={() => router.back()}
+					style={{ marginTop: 16, padding: 12, backgroundColor: colors["lol-gold"], borderRadius: 8 }}
+				>
+					<Text style={{ color: "#000", fontFamily: "Inter_600SemiBold" }}>Quay lại</Text>
+				</TouchableOpacity>
+			</View>
+		);
+	}
 
 	return (
 		<View style={styles.container}>
@@ -169,33 +312,37 @@ export default function DetailAcc() {
 						<View style={styles.avatarContainer}>
 							<View style={styles.avatarWrapper}>
 								<Image
-									source={{ uri: mockAccount.avatarUrl }}
+									source={{ uri: accountDetail.avatarUrl }}
 									style={styles.avatar}
 									contentFit="cover"
 								/>
 							</View>
 							{/* Level Badge */}
-							<View style={styles.levelBadge}>
-								<Text style={styles.levelText}>{mockAccount.level}</Text>
-							</View>
+							{accountDetail.level > 0 && (
+								<View style={styles.levelBadge}>
+									<Text style={styles.levelText}>{accountDetail.level}</Text>
+								</View>
+							)}
 						</View>
 
 						{/* Info */}
 						<View style={styles.profileInfo}>
 							<View style={styles.profileNameRow}>
-								<Text style={styles.profileName}>{mockAccount.username}</Text>
-								{mockAccount.server && (
+								<Text style={styles.profileName}>{accountDetail.username}</Text>
+								{accountDetail.server && (
 									<View style={styles.serverBadge}>
-										<Text style={styles.serverText}>{mockAccount.server}</Text>
+										<Text style={styles.serverText}>{accountDetail.server}</Text>
 									</View>
 								)}
 							</View>
-							{mockAccount.title && (
-								<Text style={styles.profileTitle}>{mockAccount.title}</Text>
+							{accountDetail.title && (
+								<Text style={styles.profileTitle}>{accountDetail.title}</Text>
 							)}
-							<Text style={styles.profileDescription}>
-								{mockAccount.description}
-							</Text>
+							{accountDetail.description && (
+								<Text style={styles.profileDescription}>
+									{accountDetail.description}
+								</Text>
+							)}
 						</View>
 					</View>
 				</View>
@@ -206,11 +353,17 @@ export default function DetailAcc() {
 						<Crown size={16} color={colors["lol-gold"]} />
 						<Text style={styles.sectionTitle}>Xếp hạng</Text>
 					</View>
-					<View style={styles.ranksGrid}>
-						{getRanksArray(mockAccount).map((rank, index) => (
-							<RankCard key={index.toString()} rank={rank} />
-						))}
-					</View>
+					{getRanksArray(accountDetail).length > 0 ? (
+						<View style={styles.ranksGrid}>
+							{getRanksArray(accountDetail).map((rank, index) => (
+								<RankCard key={index.toString()} rank={rank} />
+							))}
+						</View>
+					) : (
+						<View style={styles.emptyRanksContainer}>
+							<Text style={styles.emptyRanksText}>Không có rank</Text>
+						</View>
+					)}
 				</View>
 
 				{/* Stats Grid */}
@@ -220,21 +373,27 @@ export default function DetailAcc() {
 						<Text style={styles.sectionTitle}>Thống kê</Text>
 					</View>
 					<View style={styles.statsGrid}>
-						<StatBadge
-							label="Vinh danh"
-							value={`Cấp ${mockAccount.honorLevel}`}
-							icon={<Star size={24} color={colors.primary} />}
-						/>
-						<StatBadge
-							label="Điểm thông thạo"
-							value={mockAccount.masteryPoints.toLocaleString()}
-							icon={<Swords size={24} color={colors.primary} />}
-						/>
-						<StatBadge
-							label="Cờ hiệu"
-							value={mockAccount.region}
-							icon={<Users size={24} color={colors.primary} />}
-						/>
+						{accountDetail.honorLevel !== undefined && accountDetail.honorLevel !== null && (
+							<StatBadge
+								label="Vinh danh"
+								value={`Cấp ${accountDetail.honorLevel}`}
+								icon={<Star size={24} color={colors.primary} />}
+							/>
+						)}
+						{accountDetail.masteryPoints !== undefined && accountDetail.masteryPoints !== null && (
+							<StatBadge
+								label="Điểm thông thạo"
+								value={accountDetail.masteryPoints.toLocaleString()}
+								icon={<Swords size={24} color={colors.primary} />}
+							/>
+						)}
+						{accountDetail.region && (
+							<StatBadge
+								label="Cờ hiệu"
+								value={accountDetail.region}
+								icon={<Users size={24} color={colors.primary} />}
+							/>
+						)}
 					</View>
 				</View>
 
@@ -245,31 +404,93 @@ export default function DetailAcc() {
 						<Text style={styles.sectionTitle}>Tài sản</Text>
 					</View>
 					<View style={styles.assetsGrid}>
-						<View style={styles.assetItem}>
-							<Text style={styles.assetLabel}>Tướng</Text>
-							<Text style={styles.assetValue}>{mockAccount.champions}</Text>
-						</View>
-						<View style={styles.assetItem}>
-							<Text style={styles.assetLabel}>Skin</Text>
-							<Text style={styles.assetValue}>{mockAccount.skins}</Text>
-						</View>
-						<View style={styles.assetItem}>
-							<Text style={styles.assetLabel}>Tinh hoa xanh</Text>
-							<Text style={[styles.assetValue, { color: colors.primary }]}>
-								{mockAccount.blueEssence.toLocaleString()}
-							</Text>
-						</View>
-						<View style={styles.assetItem}>
-							<Text style={styles.assetLabel}>Tinh hoa cam</Text>
-							<Text style={[styles.assetValue, { color: colors["lol-gold"] }]}>
-								{mockAccount.orangeEssence.toLocaleString()}
-							</Text>
-						</View>
-						{mockAccount.rp !== undefined && (
+						{accountDetail.champions !== undefined && accountDetail.champions !== null && (
+							<View style={styles.assetItem}>
+								<Text style={styles.assetLabel}>Tướng</Text>
+								<Text style={styles.assetValue}>{accountDetail.champions}</Text>
+							</View>
+						)}
+						{accountDetail.skins !== undefined && accountDetail.skins !== null && (
+							<View style={styles.assetItem}>
+								<Text style={styles.assetLabel}>Skin</Text>
+								<Text style={styles.assetValue}>{accountDetail.skins}</Text>
+							</View>
+						)}
+						{accountDetail.blueEssence !== undefined && accountDetail.blueEssence !== null && (
+							<View style={styles.assetItem}>
+								<Text style={styles.assetLabel}>Tinh hoa xanh</Text>
+								<Text style={[styles.assetValue, { color: colors.primary }]}>
+									{accountDetail.blueEssence.toLocaleString()}
+								</Text>
+							</View>
+						)}
+						{accountDetail.orangeEssence !== undefined && accountDetail.orangeEssence !== null && (
+							<View style={styles.assetItem}>
+								<Text style={styles.assetLabel}>Tinh hoa cam</Text>
+								<Text style={[styles.assetValue, { color: colors["lol-gold"] }]}>
+									{accountDetail.orangeEssence.toLocaleString()}
+								</Text>
+							</View>
+						)}
+						{accountDetail.rp !== undefined && accountDetail.rp !== null && (
 							<View style={styles.assetItem}>
 								<Text style={styles.assetLabel}>RP</Text>
 								<Text style={[styles.assetValue, { color: "#ff6b6b" }]}>
-									{mockAccount.rp.toLocaleString()}
+									{accountDetail.rp.toLocaleString()}
+								</Text>
+							</View>
+						)}
+					</View>
+				</View>
+
+				{/* Additional Info Section */}
+				<View style={styles.section}>
+					<View style={styles.sectionHeader}>
+						<Gem size={16} color={colors["lol-gold"]} />
+						<Text style={styles.sectionTitle}>Thông tin bổ sung</Text>
+					</View>
+					<View style={styles.infoGrid}>
+						{account?.id && (
+							<View style={styles.infoItem}>
+								<Text style={styles.infoLabel}>ID tài khoản</Text>
+								<Text style={styles.infoValue}>{account.id}</Text>
+							</View>
+						)}
+						{account?.status && (
+							<View style={styles.infoItem}>
+								<Text style={styles.infoLabel}>Trạng thái</Text>
+								<Text style={[
+									styles.infoValue,
+									{
+										color: account.status === "available" ? "#10B981" :
+											account.status === "sold" ? colors.destructive :
+											account.status === "renting" ? "#F59E0B" : colors.mutedForeground
+									}
+								]}>
+									{account.status === "available" ? "Có sẵn" :
+										account.status === "sold" ? "Đã bán" :
+										account.status === "renting" ? "Đang thuê" : account.status}
+								</Text>
+							</View>
+						)}
+						{account?.createdAt && (
+							<View style={styles.infoItem}>
+								<Text style={styles.infoLabel}>Ngày tạo</Text>
+								<Text style={styles.infoValue}>
+									{account.createdAt.toDate ? 
+										account.createdAt.toDate().toLocaleDateString("vi-VN") :
+										account.createdAt instanceof Date ?
+											account.createdAt.toLocaleDateString("vi-VN") :
+											new Date((account.createdAt as any).seconds * 1000).toLocaleDateString("vi-VN")
+									}
+								</Text>
+							</View>
+						)}
+						{accountDetail.rentPricePerHour !== undefined && accountDetail.rentPricePerHour !== null && accountDetail.rentPricePerHour > 0 && (
+							<View style={styles.infoItem}>
+								<Text style={styles.infoLabel}>Giá thuê/giờ</Text>
+								<Text style={[styles.infoValue, { color: colors["lol-gold"] }]}>
+									{formatPrice(accountDetail.rentPricePerHour)}
 								</Text>
 							</View>
 						)}
@@ -281,24 +502,55 @@ export default function DetailAcc() {
 			</ScrollView>
 
 			{/* Fixed Bottom CTA */}
-			<View style={styles.bottomCTA}>
-				<View style={styles.priceContainer}>
-					<Text style={styles.priceLabel}>Giá bán</Text>
-					<Text style={styles.priceValue}>
-						{formatPrice(mockAccount.price)}
-					</Text>
+			{account.status === "available" && (
+				<View style={styles.bottomCTA}>
+					<View style={styles.priceContainer}>
+						<Text style={styles.priceLabel}>Giá bán</Text>
+						<Text style={styles.priceValue}>
+							{formatPrice(accountDetail.price)}
+						</Text>
+					</View>
+					<View style={styles.actionButtons}>
+						{accountDetail.rentPricePerHour && accountDetail.rentPricePerHour > 0 && (
+							<TouchableOpacity style={styles.rentButton} onPress={handleRent}>
+								<Clock size={18} color={colors.foreground} />
+								<Text style={styles.rentButtonText}>Thuê</Text>
+							</TouchableOpacity>
+						)}
+						{accountDetail.price > 0 && (
+							<TouchableOpacity style={styles.buyButton} onPress={handleBuy}>
+								<ShoppingCart size={18} color={colors.primaryForeground} />
+								<Text style={styles.buyButtonText}>Mua</Text>
+							</TouchableOpacity>
+						)}
+					</View>
 				</View>
-				<View style={styles.actionButtons}>
-					<TouchableOpacity style={styles.rentButton} onPress={handleRent}>
-						<Clock size={18} color={colors.foreground} />
-						<Text style={styles.rentButtonText}>Thuê</Text>
-					</TouchableOpacity>
-					<TouchableOpacity style={styles.buyButton} onPress={handleBuy}>
-						<ShoppingCart size={18} color={colors.primaryForeground} />
-						<Text style={styles.buyButtonText}>Mua</Text>
+			)}
+
+			{/* Reclaim Button for Owner/Admin when account is renting */}
+			{account.status === "renting" && isOwnerOrAdmin && (
+				<View style={styles.bottomCTA}>
+					<View style={styles.priceContainer}>
+						<Text style={styles.priceLabel}>Trạng thái</Text>
+						<Text style={[styles.priceValue, { color: "#F59E0B" }]}>
+							Đang được thuê
+						</Text>
+					</View>
+					<TouchableOpacity
+						style={[styles.reclaimButton, reclaiming && styles.reclaimButtonDisabled]}
+						onPress={handleReclaim}
+						disabled={reclaiming}
+					>
+						{reclaiming ? (
+							<ActivityIndicator size="small" color={colors.primaryForeground} />
+						) : (
+							<>
+								<Text style={styles.reclaimButtonText}>Thu hồi</Text>
+							</>
+						)}
 					</TouchableOpacity>
 				</View>
-			</View>
+			)}
 
 			{/* Buy Modal */}
 			<Modal
@@ -313,13 +565,13 @@ export default function DetailAcc() {
 
 						<View style={styles.modalInfo}>
 							<Text style={styles.modalLabel}>Tài khoản:</Text>
-							<Text style={styles.modalValue}>{mockAccount.username}</Text>
+							<Text style={styles.modalValue}>{accountDetail.username}</Text>
 						</View>
 
 						<View style={styles.modalInfo}>
 							<Text style={styles.modalLabel}>Giá:</Text>
 							<Text style={[styles.modalValue, { color: colors["lol-gold"] }]}>
-								{formatPrice(mockAccount.price)}
+								{formatPrice(accountDetail.price)}
 							</Text>
 						</View>
 
@@ -354,7 +606,7 @@ export default function DetailAcc() {
 										<View style={styles.bankInfoRow}>
 											<Text style={styles.bankInfoLabel}>Nội dung:</Text>
 											<Text style={[styles.bankInfoValue, { color: colors.primary }]}>
-												MUAACC {mockAccount.id} {MOCK_USER_ID}
+												MUAACC {account?.id} {account?.sellerId}
 											</Text>
 										</View>
 									</View>
@@ -391,7 +643,7 @@ export default function DetailAcc() {
 
 						<View style={styles.modalInfo}>
 							<Text style={styles.modalLabel}>Tài khoản:</Text>
-							<Text style={styles.modalValue}>{mockAccount.username}</Text>
+							<Text style={styles.modalValue}>{accountDetail.username}</Text>
 						</View>
 
 						{!selectedRental && (
@@ -400,7 +652,7 @@ export default function DetailAcc() {
 									Chọn thời gian thuê:
 								</Text>
 								<View style={styles.rentalOptions}>
-									{getRentalOptions().map((option) => (
+									{getRentalOptions(accountDetail.rentPricePerHour || 0).map((option) => (
 										<TouchableOpacity
 											key={option.hours}
 											style={styles.rentalOption}
@@ -432,7 +684,7 @@ export default function DetailAcc() {
 										</Text>
 										<Text style={styles.selectedRentalValue}>
 											{
-												getRentalOptions().find((o) => o.hours === selectedRental)
+												getRentalOptions(accountDetail.rentPricePerHour || 0).find((o) => o.hours === selectedRental)
 													?.label
 											}
 										</Text>
@@ -446,7 +698,7 @@ export default function DetailAcc() {
 											]}
 										>
 											{formatPrice(
-												getRentalOptions().find((o) => o.hours === selectedRental)
+												getRentalOptions(accountDetail.rentPricePerHour || 0).find((o) => o.hours === selectedRental)
 													?.price || 0
 											)}
 										</Text>
@@ -480,7 +732,7 @@ export default function DetailAcc() {
 										<View style={styles.bankInfoRow}>
 											<Text style={styles.bankInfoLabel}>Nội dung:</Text>
 											<Text style={[styles.bankInfoValue, { color: colors.primary }]}>
-												THUEACC {mockAccount.id} {selectedRental}H {MOCK_USER_ID}
+												THUEACC {account?.id} {selectedRental}H {account?.sellerId}
 											</Text>
 										</View>
 									</View>
@@ -538,7 +790,7 @@ const styles = StyleSheet.create({
 	},
 	title: {
 		fontSize: 18,
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
 		color: colors.foreground,
 	},
 	scrollView: {
@@ -600,7 +852,7 @@ const styles = StyleSheet.create({
 	},
 	levelText: {
 		fontSize: 12,
-		fontWeight: "bold",
+		fontFamily: "Inter_700Bold",
 		color: colors.primaryForeground,
 	},
 	profileInfo: {
@@ -614,12 +866,12 @@ const styles = StyleSheet.create({
 	},
 	profileName: {
 		fontSize: 20,
-		fontWeight: "bold",
+		fontFamily: "Inter_700Bold",
 		color: colors.foreground,
 	},
 	profileTitle: {
 		fontSize: 13,
-		fontWeight: "500",
+		fontFamily: "Inter_500Medium",
 		color: colors.primary,
 	},
 	serverBadge: {
@@ -630,7 +882,7 @@ const styles = StyleSheet.create({
 	},
 	serverText: {
 		fontSize: 12,
-		fontWeight: "500",
+		fontFamily: "Inter_500Medium",
 		color: colors.primary,
 	},
 	profileDescription: {
@@ -647,7 +899,7 @@ const styles = StyleSheet.create({
 	},
 	sectionTitle: {
 		fontSize: 16,
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
 		color: colors.foreground,
 	},
 	ranksGrid: {
@@ -655,6 +907,20 @@ const styles = StyleSheet.create({
 		flexWrap: "wrap",
 		gap: 12,
 		justifyContent: "space-between",
+	},
+	emptyRanksContainer: {
+		padding: 24,
+		alignItems: "center",
+		justifyContent: "center",
+		backgroundColor: `${colors.card}99`,
+		borderRadius: 12,
+		borderWidth: 1,
+		borderColor: `${colors.border}4D`,
+	},
+	emptyRanksText: {
+		fontSize: 14,
+		color: colors.mutedForeground,
+		fontFamily: "Inter_500Medium",
 	},
 	statsGrid: {
 		flexDirection: "row",
@@ -683,7 +949,31 @@ const styles = StyleSheet.create({
 	},
 	assetValue: {
 		fontSize: 16,
-		fontWeight: "bold",
+		fontFamily: "Inter_700Bold",
+		color: colors.foreground,
+	},
+	infoGrid: {
+		flexDirection: "column",
+		gap: 12,
+	},
+	infoItem: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "space-between",
+		padding: 12,
+		backgroundColor: `${colors.card}99`,
+		borderRadius: 12,
+		borderWidth: 1,
+		borderColor: `${colors.border}4D`,
+	},
+	infoLabel: {
+		fontSize: 14,
+		color: colors.mutedForeground,
+		fontFamily: "Inter_500Medium",
+	},
+	infoValue: {
+		fontSize: 14,
+		fontFamily: "Inter_600SemiBold",
 		color: colors.foreground,
 	},
 	bottomCTA: {
@@ -710,7 +1000,7 @@ const styles = StyleSheet.create({
 	},
 	priceValue: {
 		fontSize: 18,
-		fontWeight: "bold",
+		fontFamily: "Inter_700Bold",
 		color: colors["lol-gold"],
 	},
 	actionButtons: {
@@ -730,7 +1020,7 @@ const styles = StyleSheet.create({
 	},
 	rentButtonText: {
 		fontSize: 14,
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
 		color: colors.foreground,
 	},
 	buyButton: {
@@ -744,7 +1034,25 @@ const styles = StyleSheet.create({
 	},
 	buyButtonText: {
 		fontSize: 14,
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
+		color: colors.primaryForeground,
+	},
+	reclaimButton: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 6,
+		backgroundColor: colors.destructive,
+		paddingHorizontal: 24,
+		paddingVertical: 12,
+		borderRadius: 12,
+	},
+	reclaimButtonDisabled: {
+		opacity: 0.6,
+	},
+	reclaimButtonText: {
+		fontSize: 14,
+		fontFamily: "Inter_600SemiBold",
 		color: colors.primaryForeground,
 	},
 	modalOverlay: {
@@ -764,7 +1072,7 @@ const styles = StyleSheet.create({
 	},
 	modalTitle: {
 		fontSize: 20,
-		fontWeight: "bold",
+		fontFamily: "Inter_700Bold",
 		color: colors.foreground,
 		marginBottom: 8,
 	},
@@ -779,7 +1087,7 @@ const styles = StyleSheet.create({
 	},
 	modalValue: {
 		fontSize: 16,
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
 		color: colors.foreground,
 	},
 	qrScrollView: {
@@ -817,7 +1125,7 @@ const styles = StyleSheet.create({
 	},
 	bankInfoValue: {
 		fontSize: 14,
-		fontWeight: "500",
+		fontFamily: "Inter_500Medium",
 		color: colors.foreground,
 	},
 	checkPaymentButton: {
@@ -828,7 +1136,7 @@ const styles = StyleSheet.create({
 	},
 	checkPaymentButtonText: {
 		fontSize: 16,
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
 		color: colors.primaryForeground,
 		textAlign: "center",
 	},
@@ -839,13 +1147,13 @@ const styles = StyleSheet.create({
 	},
 	closeButtonText: {
 		fontSize: 16,
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
 		color: colors.foreground,
 		textAlign: "center",
 	},
 	rentalOptionsTitle: {
 		fontSize: 14,
-		fontWeight: "500",
+		fontFamily: "Inter_500Medium",
 		color: colors.foreground,
 		marginTop: 8,
 	},
@@ -870,12 +1178,12 @@ const styles = StyleSheet.create({
 	},
 	rentalOptionLabel: {
 		fontSize: 16,
-		fontWeight: "500",
+		fontFamily: "Inter_500Medium",
 		color: colors.foreground,
 	},
 	rentalOptionPrice: {
 		fontSize: 16,
-		fontWeight: "bold",
+		fontFamily: "Inter_700Bold",
 		color: colors["lol-gold"],
 	},
 	selectedRentalInfo: {
@@ -891,7 +1199,7 @@ const styles = StyleSheet.create({
 	},
 	selectedRentalValue: {
 		fontSize: 16,
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
 		color: colors.foreground,
 	},
 });

@@ -55,7 +55,6 @@ export default function RankCard({ rank }: RankCardProps) {
 					}}
 					onError={() => {
 						// Fallback to iron if image fails to load
-						console.log("Failed to load rank icon");
 					}}
 				/>
 			</View>
@@ -66,7 +65,7 @@ export default function RankCard({ rank }: RankCardProps) {
 					fontSize: 11,
 					color: colors.mutedForeground,
 					textAlign: "center",
-					fontWeight: "500",
+					fontFamily: "Inter_500Medium",
 					textTransform: "uppercase",
 					letterSpacing: 0.5,
 				}}
@@ -78,7 +77,7 @@ export default function RankCard({ rank }: RankCardProps) {
 			<Text
 				style={{
 					fontSize: 13,
-					fontWeight: "600",
+					fontFamily: "Inter_600SemiBold",
 					color: colors["lol-gold"],
 					textAlign: "center",
 				}}

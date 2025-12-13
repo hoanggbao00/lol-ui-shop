@@ -14,4 +14,10 @@ export interface Item {
   buyPrice: number
   status: 'available' | 'rented' | 'sold'
   image: string
+  buyerInfo?: {
+    buyerId: string
+    buyerName?: string
+    transactionType: 'purchase' | 'rent'
+    rentEndDate?: Date
+  }
 }

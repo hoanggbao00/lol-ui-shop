@@ -139,7 +139,7 @@ export default function SignIn() {
 						style={{
 							color: "#000000",
 							fontSize: 16,
-							fontWeight: "bold",
+							fontFamily: "Inter_700Bold",
 							textAlign: "center",
 						}}
 					>
@@ -157,7 +157,7 @@ export default function SignIn() {
 						style={{
 							color: "#FFF3E5",
 							fontSize: 16,
-							fontWeight: "bold",
+							fontFamily: "Inter_700Bold",
 						}}
 					>
 						Quên mật khẩu?
@@ -186,7 +186,7 @@ export default function SignIn() {
 							style={{
 								color: "#C8AA6E",
 								fontSize: 48,
-								fontWeight: "bold",
+								fontFamily: "Inter_700Bold",
 							}}
 						>
 							f
@@ -206,7 +206,7 @@ export default function SignIn() {
 							style={{
 								color: "#C8AA6E",
 								fontSize: 48,
-								fontWeight: "bold",
+								fontFamily: "Inter_700Bold",
 							}}
 						>
 							G
@@ -232,7 +232,7 @@ export default function SignIn() {
 							style={{
 								color: "#C8AA6E",
 								fontSize: 16,
-								fontWeight: "bold",
+								fontFamily: "Inter_700Bold",
 								textAlign: "center",
 							}}
 						>

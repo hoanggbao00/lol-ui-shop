@@ -1,4 +1,6 @@
 import { getAccountsBySellerId } from "@/actions/account.action";
+import { getOrdersByAccountId } from "@/actions/order.action";
+import { getUserById } from "@/actions/user.action";
 import Background from "@/components/Background";
 import ListView from "@/components/home/ListView";
 import { colors } from '@/libs/colors';
@@ -34,12 +36,25 @@ const mapAccountToItem = (account: LolAccount): Item => {
 		return "available";
 	};
 
+	// Join ranks with "|" separator
+	const ranks: string[] = [];
+	if (account.soloRank?.tier) {
+		ranks.push(account.soloRank.tier);
+	}
+	if (account.flexRank?.tier) {
+		ranks.push(account.flexRank.tier);
+	}
+	if (account.tftRank?.tier) {
+		ranks.push(account.tftRank.tier);
+	}
+	const rankString = ranks.length > 0 ? ranks.join(" | ") : "Unranked";
+
 	return {
 		id: account.id ? parseInt(account.id.slice(0, 8), 16) || 0 : 0,
 		firestoreId: account.id || undefined, // Lưu Firestore ID gốc
 		name: account.ingameName || account.title || "Unknown",
 		description: account.description || "",
-		rank: account.soloRank?.tier || account.flexRank?.tier || "Unranked",
+		rank: rankString,
 		level: account.level || 0,
 		championCount: account.champCount || 0,
 		skinCount: account.skinCount || 0,
@@ -59,6 +74,8 @@ export default function DangBan() {
 	const [data, setData] = useState<Item[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [ownerIds, setOwnerIds] = useState<Map<number, boolean>>(new Map());
+	const [isAdmin, setIsAdmin] = useState(false);
 
 	const handleAuthStateChanged = useCallback((_user: FirebaseAuthTypes.User | null) => {
 		setAuthUser(_user);
@@ -81,9 +98,61 @@ export default function DangBan() {
 		try {
 			setLoading(true);
 			setError(null);
+			
+			// Check if user is admin
+			const userData = await getUserById(authUser.uid);
+			const isUserAdmin = userData?.role === "admin";
+			if (userData) {
+				setIsAdmin(isUserAdmin);
+			}
+
 			const result = await getAccountsBySellerId(authUser.uid);
-			const items = result.accounts.map(mapAccountToItem);
+			
+			// Map accounts to items and fetch buyer info for sold/rented accounts
+			const itemsPromises = result.accounts.map(async (account: LolAccount) => {
+				const item = mapAccountToItem(account);
+				
+				// If account is sold or renting, get buyer info
+				if (account.status === "sold" || account.status === "renting") {
+					try {
+						const orders = await getOrdersByAccountId(account.id || "");
+						if (orders.length > 0) {
+							// Get the most recent order
+							const latestOrder = orders[0];
+							const orderItem = latestOrder.items.find(item => item.accountId === account.id);
+							
+							if (orderItem && latestOrder.buyerId) {
+								// Get buyer info
+								const buyerData = await getUserById(latestOrder.buyerId);
+								item.buyerInfo = {
+									buyerId: latestOrder.buyerId,
+									buyerName: buyerData?.username || buyerData?.email || "Unknown",
+									transactionType: orderItem.transactionType,
+									rentEndDate: orderItem.rentEndDate?.toDate(),
+								};
+							}
+						}
+					} catch (err) {
+						console.error("Error fetching buyer info:", err);
+					}
+				}
+				
+				return item;
+			});
+			
+			const items = await Promise.all(itemsPromises);
 			setData(items);
+
+			// Create map of owner IDs - all accounts in this page are owned by the user, or admin can edit
+			if (authUser?.uid) {
+				const ownerMap = new Map<number, boolean>();
+				result.accounts.forEach((account: LolAccount) => {
+					const itemId = account.id ? parseInt(account.id.slice(0, 8), 16) || 0 : 0;
+					// User owns the account OR user is admin
+					ownerMap.set(itemId, account.sellerId === authUser.uid || isUserAdmin);
+				});
+				setOwnerIds(ownerMap);
+			}
 		} catch (err) {
 			console.error("Error fetching accounts:", err);
 			setError("Không thể tải danh sách bài đăng");
@@ -151,8 +220,6 @@ export default function DangBan() {
 		);
 	}
 
-	console.log(data);
-
 	return (
 		<View style={styles.container}>
 			<Background />
@@ -183,7 +250,7 @@ export default function DangBan() {
 								</TouchableOpacity>
 							</View>
 						) : (
-							<ListView data={data} showBuyNowButton={false} />
+							<ListView data={data} showBuyNowButton={false} ownerIds={ownerIds} showBuyerInfo={true} />
 						)}
 					</View>
 				</View>
@@ -241,7 +308,7 @@ const styles = StyleSheet.create({
 	retryButtonText: {
 		color: "#000",
 		fontSize: 16,
-		fontWeight: "bold",
+		fontFamily: "Inter_700Bold",
 	},
 	emptyContainer: {
 		padding: 32,
@@ -267,7 +334,7 @@ const styles = StyleSheet.create({
 	addButtonText: {
 		color: colors["lol-gold"],
 		fontSize: 16,
-		fontWeight: "bold",
+		fontFamily: "Inter_700Bold",
 	},
 });
 
@@ -291,7 +358,7 @@ const listViewStyles = StyleSheet.create({
 	dividerText: {
 		color: "#CABB8E",
 		fontSize: 16,
-		fontWeight: "bold",
+		fontFamily: "Inter_700Bold",
 		textAlign: "center",
 	},
 });

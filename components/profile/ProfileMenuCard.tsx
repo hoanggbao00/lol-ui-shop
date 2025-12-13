@@ -2,12 +2,14 @@ import { colors } from "@/libs/colors";
 import { getAuth } from "@react-native-firebase/auth";
 import { router } from "expo-router";
 import {
+	Database,
 	History,
-	Languages,
 	Lock,
 	LogOut,
+	Receipt,
 	Upload,
 	User,
+	Users
 } from "lucide-react-native";
 import type React from "react";
 import { Text, ToastAndroid, TouchableOpacity, View } from "react-native";
@@ -18,12 +20,40 @@ interface MenuItem {
 	onPress?: () => void;
 }
 
-export default function ProfileMenuCard() {
+interface ProfileMenuCardProps {
+	isAdmin?: boolean;
+}
+
+export default function ProfileMenuCard({ isAdmin = false }: ProfileMenuCardProps) {
 	const handleLogout = async () => {
 		await getAuth().signOut();
 		ToastAndroid.show("Đăng xuất thành công", ToastAndroid.SHORT);
 		router.push("/");
 	};
+
+	const adminMenus: MenuItem[] = [
+		{
+			icon: Users,
+			text: "Quản lý user",
+			onPress: () => {
+				router.push("/quan-ly-user");
+			},
+		},
+		{
+			icon: Receipt,
+			text: "Quản lý giao dịch",
+			onPress: () => {
+				router.push("/quan-ly-giao-dich");
+			},
+		},
+		{
+			icon: Database,
+			text: "Quản lý tài khoản",
+			onPress: () => {
+				router.push("/quan-ly-tai-khoan");
+			},
+		},
+	];
 
 	const menus: MenuItem[] = [
 		{
@@ -41,6 +71,13 @@ export default function ProfileMenuCard() {
 			},
 		},
 		{
+			icon: Receipt,
+			text: "Giao dịch của tôi",
+			onPress: () => {
+				router.push("/quan-ly-giao-dich");
+			},
+		},
+		{
 			icon: History,
 			text: "Lịch sử giao dịch",
 			onPress: () => {
@@ -55,18 +92,14 @@ export default function ProfileMenuCard() {
 			},
 		},
 		{
-			icon: Languages,
-			text: "Đổi ngôn ngữ",
-			onPress: () => {
-				// TODO: Implement language change
-			},
-		},
-		{
 			icon: LogOut,
 			text: "Đăng xuất",
 			onPress: handleLogout,
 		},
 	];
+
+	// Combine admin menus with regular menus
+	const allMenus = isAdmin ? [...adminMenus, ...menus] : menus;
 
 	return (
 		<View
@@ -80,7 +113,7 @@ export default function ProfileMenuCard() {
 				gap: 4,
 			}}
 		>
-			{menus.map((item, index) => {
+			{allMenus.map((item, index) => {
 				const Icon = item.icon;
 				const isLast = index === menus.length - 1;
 				const isLogout = item.text === "Đăng xuất";
@@ -122,7 +155,7 @@ export default function ProfileMenuCard() {
 								style={{
 									flex: 1,
 									fontSize: 16,
-									fontWeight: "500",
+									fontFamily: "Inter_500Medium",
 									color: isLogout ? colors.destructive : colors.foreground,
 								}}
 							>

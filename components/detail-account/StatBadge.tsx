@@ -48,7 +48,8 @@ export default function StatBadge({ label, value, icon }: StatBadgeProps) {
 			<Text
 				style={{
 					fontSize: 16,
-					fontWeight: "bold",
+					fontFamily: "Inter_700Bold",
+					textTransform: "capitalize",
 					color: colors.foreground,
 				}}
 			>

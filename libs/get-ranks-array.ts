@@ -5,7 +5,7 @@ export const getRanksArray = (account?: AccountDetail): RankInfo[] => {
 	const ranks: RankInfo[] = [];
 
 	// Solo/Duo rank
-	if (account.soloRank) {
+	if (account.soloRank && account.soloRank.trim() !== "") {
 		ranks.push({
 			mode: "ĐƠN/ĐÔI",
 			rank: `${account.soloRank.toUpperCase()} ${account.soloDivision || ""}`.trim(),
@@ -17,7 +17,7 @@ export const getRanksArray = (account?: AccountDetail): RankInfo[] => {
 	}
 
 	// Flex rank
-	if (account.flexRank) {
+	if (account.flexRank && account.flexRank.trim() !== "") {
 		ranks.push({
 			mode: "LH 5V5",
 			rank: `${account.flexRank.toUpperCase()} ${account.flexDivision || ""}`.trim(),
@@ -29,7 +29,7 @@ export const getRanksArray = (account?: AccountDetail): RankInfo[] => {
 	}
 
 	// TFT rank
-	if (account.tftRank) {
+	if (account.tftRank && account.tftRank.trim() !== "") {
 		ranks.push({
 			mode: "ĐTCL",
 			rank: `${account.tftRank.toUpperCase()} ${account.tftDivision || ""}`.trim(),

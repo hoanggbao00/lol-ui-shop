@@ -1,7 +1,7 @@
 import { colors } from "@/libs/colors";
 import { Image } from "expo-image";
 import React from "react";
-import { type ImageSourcePropType, Text, View } from "react-native";
+import { Text, View, type ImageSourcePropType } from "react-native";
 
 interface AccountImageNameProps {
 	image: ImageSourcePropType;
@@ -37,7 +37,7 @@ export default function AccountImageName(props: AccountImageNameProps) {
 				<Text
 					style={{
 						fontSize: 20,
-						fontWeight: "bold",
+						fontFamily: "Inter_700Bold",
 						color: colors["lol-gold"],
 					}}
 				>

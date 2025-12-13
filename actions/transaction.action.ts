@@ -83,3 +83,19 @@ export const approveTransaction = async (
 		});
 	});
 };
+
+/**
+ * LẤY TẤT CẢ WALLET TRANSACTIONS (Admin only)
+ */
+export const getAllTransactions = async () => {
+	const app = getApp();
+	const db = getFirestore(app);
+	const transactionsRef = collection(db, TRANSACTIONS_COLL);
+
+	const q = query(transactionsRef, orderBy("createdAt", "desc"));
+	const snapshot = await getDocs(q);
+
+	return snapshot.docs.map(
+		(docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as WalletTransaction,
+	);
+};

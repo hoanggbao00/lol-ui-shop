@@ -2,21 +2,21 @@ import { createUser } from "@/actions/user.action";
 import Background from "@/components/Background";
 import type { User } from "@/types";
 import {
-  type FirebaseAuthTypes,
-  createUserWithEmailAndPassword,
-  getAuth,
-  onAuthStateChanged,
+	createUserWithEmailAndPassword,
+	getAuth,
+	onAuthStateChanged,
+	type FirebaseAuthTypes,
 } from "@react-native-firebase/auth";
 import { Timestamp } from "@react-native-firebase/firestore";
 import { Link } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  StyleSheet,
-  Text,
-  TextInput,
-  ToastAndroid,
-  TouchableOpacity,
-  View,
+	StyleSheet,
+	Text,
+	TextInput,
+	ToastAndroid,
+	TouchableOpacity,
+	View,
 } from "react-native";
 
 export default function SignIn() {
@@ -72,7 +72,6 @@ export default function SignIn() {
 			// 3. Ghi vào Firestore (Dùng set để ID của Doc trùng với Auth UID)
 			await createUser(newUserData);
 
-			console.log("Đăng ký và tạo user database thành công!");
 			ToastAndroid.show("Đăng ký thành công!", ToastAndroid.SHORT);
 		} catch (error: unknown) {
 			console.error(error);
@@ -219,7 +218,7 @@ export default function SignIn() {
 						style={{
 							color: "#000000",
 							fontSize: 16,
-							fontWeight: "bold",
+							fontFamily: "Inter_700Bold",
 							textAlign: "center",
 						}}
 					>
@@ -249,7 +248,7 @@ export default function SignIn() {
 							style={{
 								color: "#C8AA6E",
 								fontSize: 48,
-								fontWeight: "bold",
+								fontFamily: "Inter_700Bold",
 							}}
 						>
 							f
@@ -269,7 +268,7 @@ export default function SignIn() {
 							style={{
 								color: "#C8AA6E",
 								fontSize: 48,
-								fontWeight: "bold",
+								fontFamily: "Inter_700Bold",
 							}}
 						>
 							G
@@ -295,7 +294,7 @@ export default function SignIn() {
 							style={{
 								color: "#C8AA6E",
 								fontSize: 16,
-								fontWeight: "bold",
+								fontFamily: "Inter_700Bold",
 								textAlign: "center",
 							}}
 						>

@@ -45,7 +45,7 @@ export default function ProfileAvatar({
 			<Text
 				style={{
 					fontSize: 24,
-					fontWeight: "bold",
+					fontFamily: "Inter_700Bold",
 					color: colors["lol-gold"],
 					marginBottom: 4,
 				}}
@@ -63,40 +63,6 @@ export default function ProfileAvatar({
 			>
 				ID: {userId}
 			</Text>
-
-			{/* Status Badge */}
-			<View
-				style={{
-					flexDirection: "row",
-					alignItems: "center",
-					gap: 8,
-					marginTop: 12,
-					paddingHorizontal: 16,
-					paddingVertical: 6,
-					backgroundColor: `${colors.primary}1A`,
-					borderRadius: 20,
-					borderWidth: 1,
-					borderColor: `${colors.primary}33`,
-				}}
-			>
-				<View
-					style={{
-						width: 8,
-						height: 8,
-						borderRadius: 4,
-						backgroundColor: colors.primary,
-					}}
-				/>
-				<Text
-					style={{
-						fontSize: 12,
-						color: colors.primary,
-						fontWeight: "500",
-					}}
-				>
-					Đang hoạt động
-				</Text>
-			</View>
 		</View>
 	);
 }

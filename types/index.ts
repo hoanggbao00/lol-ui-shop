@@ -59,9 +59,15 @@ export interface LolAccount {
 	// Stats
 	champCount?: number;
 	skinCount?: number;
+	blueEssence?: number;
+	orangeEssence?: number;
+	rp?: number;
+	honorLevel?: number;
+	masteryPoints?: number;
 	// Ranks (Gộp các trường rank solo/flex vào object cho gọn)
 	soloRank?: { tier: string; division: string; lp: number; wins: number };
 	flexRank?: { tier: string; division: string; lp: number; wins: number };
+	tftRank?: { tier: string; division: string; lp: number; wins: number };
 	// Login Info (Nên bảo mật kỹ, chỉ trả về khi đã mua)
 	loginUsername?: string;
 	loginPassword?: string;

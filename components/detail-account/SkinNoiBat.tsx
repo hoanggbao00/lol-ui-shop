@@ -19,7 +19,7 @@ export default function SkinNoiBat() {
 			<Text
 				style={{
 					fontSize: 16,
-					fontWeight: "bold",
+					fontFamily: "Inter_700Bold",
 				}}
 			>
 				Skin Nổi Bật

@@ -146,7 +146,7 @@ export default function UserScreen() {
 				</View>
 
 				{/* Menu Card */}
-				<ProfileMenuCard />
+				<ProfileMenuCard isAdmin={userData.role === "admin"} />
 			</ScrollView>
 		</View>
 	);
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
 	errorText: {
 		color: colors["lol-gold"],
 		fontSize: 16,
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
 		textAlign: "center",
 	},
 	decorativeBackground: {
@@ -211,11 +211,11 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		color: "#C8AA6E",
 		marginBottom: 8,
-		fontWeight: "500",
+		fontFamily: "Inter_500Medium",
 	},
 	balanceAmount: {
 		fontSize: 32,
-		fontWeight: "bold",
+		fontFamily: "Inter_700Bold",
 		color: colors["lol-gold"],
 	},
 	divider: {
@@ -234,12 +234,12 @@ const styles = StyleSheet.create({
 	detailLabel: {
 		fontSize: 14,
 		color: "#C8AA6E",
-		fontWeight: "500",
+		fontFamily: "Inter_500Medium",
 	},
 	detailValue: {
 		fontSize: 14,
 		color: "#F0E6D2",
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
 		flex: 1,
 		textAlign: "right",
 	},
@@ -254,12 +254,12 @@ const styles = StyleSheet.create({
 	roleText: {
 		fontSize: 12,
 		color: colors.primary,
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
 	},
 	sectionTitle: {
 		fontSize: 14,
 		color: "#F0E6D2",
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
 		marginTop: 4,
 	},
 });

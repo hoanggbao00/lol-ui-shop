@@ -12,6 +12,7 @@ export interface Order {
 	order_id: number;
 	user_id: number;
 	account_id: number;
+	account_firestore_id?: string; // Firestore ID để lấy credentials
 	account_name: string;
 	account_avatar: string;
 	rank: string;

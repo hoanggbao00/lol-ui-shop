@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
 	},
 	rankSelectorLabel: {
 		fontSize: 14,
-		fontWeight: "500",
+		fontFamily: "Inter_500Medium",
 		color: colors.foreground,
 	},
 	rankRow: {

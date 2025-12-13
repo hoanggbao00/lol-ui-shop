@@ -1,23 +1,30 @@
-import { colors } from '@/libs/colors';
-import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Inter_800ExtraBold, useFonts } from '@expo-google-fonts/inter';
+import { colors } from "@/libs/colors";
+import {
+	Inter_400Regular,
+	Inter_500Medium,
+	Inter_600SemiBold,
+	Inter_700Bold,
+	Inter_800ExtraBold,
+	useFonts,
+} from "@expo-google-fonts/inter";
 import { Stack } from "expo-router";
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import * as SplashScreen from "expo-splash-screen";
+import { useEffect } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "../global.css";
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-	const [loaded, error] = useFonts({
-		Inter_400Regular,
-		Inter_500Medium,
-		Inter_600SemiBold,
-		Inter_700Bold,
-		Inter_800ExtraBold,
+  const [loaded, error] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_800ExtraBold,
   });
 
-	useEffect(() => {
+  useEffect(() => {
     if (loaded || error) {
       SplashScreen.hideAsync();
     }
@@ -27,19 +34,29 @@ export default function RootLayout() {
     return null;
   }
 
-	return (
-		<GestureHandlerRootView style={{ flex: 1 }}>
-		<Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors["lol-black"] } }}>
-			<Stack.Screen name="index" />
-			<Stack.Screen name="signup" />
-			<Stack.Screen name="new" />
-			<Stack.Screen name="(tabs)" />
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors["lol-black"] },
+        }}
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="signup" />
+        <Stack.Screen name="new" />
+        <Stack.Screen name="(tabs)" />
 
-			<Stack.Screen name="detail-acc" />
-			<Stack.Screen name="cart" />
-			<Stack.Screen name="profile" />
+        <Stack.Screen name="detail-acc/[id]" />
+        <Stack.Screen name="cart" />
+        <Stack.Screen name="profile" />
 
-		</Stack>
-		</GestureHandlerRootView>
-	);
+        <Stack.Screen name="edit/[id]" />
+
+        <Stack.Screen name="quan-ly-giao-dich" />
+        <Stack.Screen name="quan-ly-user" />
+        <Stack.Screen name="quan-ly-tai-khoan" />
+      </Stack>
+    </GestureHandlerRootView>
+  );
 }

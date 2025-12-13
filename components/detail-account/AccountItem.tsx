@@ -26,7 +26,7 @@ export default function AccountItem(props: AccountItemProps) {
       <Ionicons name={props.icon} size={24} color={colors["lol-gold"]} />
       <View>
         <Text style={{ color: "white", fontSize: 12 }}>{props.label}</Text>
-        <Text style={{ color: colors["lol-gold"], fontSize: 16, fontWeight: "bold" }}>{props.value}</Text>
+        <Text style={{ color: colors["lol-gold"], fontSize: 16, fontFamily: "Inter_700Bold" }}>{props.value}</Text>
       </View>
     </View>
   )

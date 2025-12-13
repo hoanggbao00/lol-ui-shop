@@ -1,10 +1,11 @@
+import { updatePassword } from "@/actions/user.action";
 import Background from "@/components/Background";
 import { colors } from "@/libs/colors";
-import { getAuth } from "@react-native-firebase/auth";
 import { router } from "expo-router";
 import { ArrowLeft, Eye, EyeOff, Lock, Save } from "lucide-react-native";
 import { useState } from "react";
 import {
+	ActivityIndicator,
 	ScrollView,
 	StyleSheet,
 	Text,
@@ -92,24 +93,19 @@ export default function ChangePasswordScreen() {
 			return;
 		}
 
+		if (currentPassword === newPassword) {
+			ToastAndroid.show(
+				"Mật khẩu mới phải khác mật khẩu hiện tại",
+				ToastAndroid.SHORT
+			);
+			return;
+		}
+
 		setLoading(true);
 
 		try {
-			const user = getAuth().currentUser;
-			if (!user || !user.email) {
-				ToastAndroid.show("Không tìm thấy thông tin người dùng", ToastAndroid.SHORT);
-				return;
-			}
-
-			// Re-authenticate user with current password
-			const credential = getAuth().EmailAuthProvider.credential(
-				user.email,
-				currentPassword
-			);
-			await user.reauthenticateWithCredential(credential);
-
-			// Update password
-			await user.updatePassword(newPassword);
+			// Use action to update password
+			await updatePassword(currentPassword, newPassword);
 
 			ToastAndroid.show("Đổi mật khẩu thành công", ToastAndroid.LONG);
 			
@@ -126,7 +122,9 @@ export default function ChangePasswordScreen() {
 			console.error("Change password error:", error);
 			
 			let errorMessage = "Đổi mật khẩu thất bại";
-			if (error.code === "auth/wrong-password") {
+			if (error.message) {
+				errorMessage = error.message;
+			} else if (error.code === "auth/wrong-password") {
 				errorMessage = "Mật khẩu hiện tại không đúng";
 			} else if (error.code === "auth/weak-password") {
 				errorMessage = "Mật khẩu mới quá yếu";
@@ -207,7 +205,11 @@ export default function ChangePasswordScreen() {
 						},
 					]}
 				>
-					<Save size={20} color={hasChanges ? colors.primaryForeground : colors.mutedForeground} />
+					{loading ? (
+						<ActivityIndicator size="small" color={colors.primaryForeground} />
+					) : (
+						<Save size={20} color={hasChanges ? colors.primaryForeground : colors.mutedForeground} />
+					)}
 					<Text
 						style={[
 							styles.saveButtonText,
@@ -252,7 +254,7 @@ const styles = StyleSheet.create({
 	},
 	headerTitle: {
 		fontSize: 18,
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
 		color: colors.foreground,
 	},
 	scrollView: {
@@ -315,7 +317,7 @@ const styles = StyleSheet.create({
 	input: {
 		flex: 1,
 		fontSize: 16,
-		fontWeight: "500",
+		fontFamily: "Inter_500Medium",
 		color: colors.foreground,
 		padding: 0,
 	},
@@ -333,6 +335,6 @@ const styles = StyleSheet.create({
 	},
 	saveButtonText: {
 		fontSize: 16,
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
 	},
 });

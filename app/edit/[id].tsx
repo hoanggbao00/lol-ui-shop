@@ -62,10 +62,6 @@ interface FormData {
 	flexDivision: string;
 	flexLP: string;
 	flexWins: string;
-	tftRank: string;
-	tftDivision: string;
-	tftLP: string;
-	tftWins: string;
 	// Pricing
 	price: string;
 	rentPricePerHour: string;
@@ -110,10 +106,6 @@ export default function EditAccountPage() {
 		flexDivision: "",
 		flexLP: "",
 		flexWins: "",
-		tftRank: "",
-		tftDivision: "",
-		tftLP: "",
-		tftWins: "",
 		// Pricing
 		price: "",
 		rentPricePerHour: "",
@@ -183,17 +175,14 @@ export default function EditAccountPage() {
 	};
 
 	const handleSubmit = async () => {
-		console.log('=== SUBMIT STARTED ===');
 		
 		// Validate form
 		const error = validateForm();
 		if (error) {
-			console.log('Validation error:', error);
 			ToastAndroid.show(error, ToastAndroid.LONG);
 			return;
 		}
 
-		console.log('Validation passed');
 		setSubmitting(true);
 		
 		try {
@@ -201,7 +190,6 @@ export default function EditAccountPage() {
 			let thumbnailUrl: string | undefined = undefined;
 			if (image && !image.startsWith('http')) {
 				setUploading(true);
-				console.log('Starting image upload...');
 				thumbnailUrl = await uploadImageToStorage(image, 'account_images');
 				setUploading(false);
 			} else if (image && image.startsWith('http')) {
@@ -210,7 +198,6 @@ export default function EditAccountPage() {
 			}
 
 			// 2. Prepare rank data
-			console.log('Preparing rank data...');
 			const soloRank = formData.soloRank && formData.soloDivision ? {
 				tier: formData.soloRank,
 				division: formData.soloDivision,
@@ -226,7 +213,6 @@ export default function EditAccountPage() {
 			} : undefined;
 
 			// 3. Prepare account data
-			console.log('Preparing account data...');
 			const accountData: any = {
 				title: formData.title.trim() || formData.username.trim(),
 				level: formData.level ? Number(formData.level) : undefined,
@@ -236,6 +222,11 @@ export default function EditAccountPage() {
 				region: formData.region || undefined,
 				champCount: formData.champions ? Number(formData.champions) : undefined,
 				skinCount: formData.skins ? Number(formData.skins) : undefined,
+				blueEssence: formData.blueEssence ? Number(formData.blueEssence) : undefined,
+				orangeEssence: formData.orangeEssence ? Number(formData.orangeEssence) : undefined,
+				rp: formData.rp ? Number(formData.rp) : undefined,
+				honorLevel: formData.honorLevel ? Number(formData.honorLevel) : undefined,
+				masteryPoints: formData.masteryPoints ? Number(formData.masteryPoints) : undefined,
 				soloRank,
 				flexRank,
 				loginUsername: formData.loginUsername.trim(),
@@ -249,18 +240,12 @@ export default function EditAccountPage() {
 				accountData.thumbnailUrl = thumbnailUrl;
 			}
 
-			console.log('Account data prepared:', JSON.stringify(accountData, null, 2));
-
 			// 4. Call API to create or update account
 			if (isEditMode && accountId) {
-				console.log('Calling updateAccount API...');
 				await updateAccount(accountId, accountData);
-				console.log('Account updated successfully');
 				ToastAndroid.show("Cập nhật tài khoản thành công!", ToastAndroid.LONG);
 			} else {
-				console.log('Calling createAccount API...');
 				const newAccountId = await createAccount(accountData);
-				console.log('Account created successfully with ID:', newAccountId);
 				
 				const listingTypes = [];
 				if (forSale) listingTypes.push("bán");
@@ -269,7 +254,6 @@ export default function EditAccountPage() {
 			}
 			
 			// 5. Navigate back
-			console.log('Navigating back...');
 			router.back();
 		} catch (error: any) {
 			console.error('=== ERROR IN SUBMIT ===');
@@ -279,7 +263,6 @@ export default function EditAccountPage() {
 			const errorMessage = error?.message || 'Có lỗi xảy ra. Vui lòng thử lại.';
 			ToastAndroid.show(errorMessage, ToastAndroid.LONG);
 		} finally {
-			console.log('=== SUBMIT FINISHED ===');
 			setSubmitting(false);
 			setUploading(false);
 		}
@@ -350,14 +333,12 @@ export default function EditAccountPage() {
 
 	const loadAccountData = async () => {
 		if (accountId === undefined || accountId === null || accountId === "" || accountId === "0") {
-			console.log("Invalid accountId:", accountId);
 			ToastAndroid.show("ID tài khoản không hợp lệ", ToastAndroid.SHORT);
 			return;
 		}
 
 		try {
 			setLoading(true);
-			console.log("Loading account with ID:", accountId);
 			const account = await getAccountById(accountId);
 
 			
@@ -374,11 +355,11 @@ export default function EditAccountPage() {
 				level: account.level?.toString() || "",
 				champions: account.champCount?.toString() || "",
 				skins: account.skinCount?.toString() || "",
-				blueEssence: "",
-				orangeEssence: "",
-				rp: "",
-				honorLevel: "",
-				masteryPoints: "",
+				blueEssence: account.blueEssence?.toString() || "",
+				orangeEssence: account.orangeEssence?.toString() || "",
+				rp: account.rp?.toString() || "",
+				honorLevel: account.honorLevel?.toString() || "",
+				masteryPoints: account.masteryPoints?.toString() || "",
 				region: account.region || "",
 				loginUsername: account.loginUsername || "",
 				loginPassword: account.loginPassword || "",
@@ -390,10 +371,6 @@ export default function EditAccountPage() {
 				flexDivision: account.flexRank?.division || "",
 				flexLP: account.flexRank?.lp?.toString() || "",
 				flexWins: account.flexRank?.wins?.toString() || "",
-				tftRank: "",
-				tftDivision: "",
-				tftLP: "",
-				tftWins: "",
 				price: account.buyPrice?.toString() || "",
 				rentPricePerHour: account.rentPricePerHour?.toString() || "",
 				description: account.description || "",
@@ -492,7 +469,7 @@ export default function EditAccountPage() {
 			>
 				{/* Listing Type - Checkboxes */}
 				<View style={styles.section}>
-					<Text style={styles.sectionLabel}>Hình thức đăng tintin</Text>
+					<Text style={styles.sectionLabel}>Hình thức đăng tin</Text>
 					<View style={styles.checkboxContainer}>
 						<TouchableOpacity
 							style={styles.checkboxRow}
@@ -522,7 +499,7 @@ export default function EditAccountPage() {
 						{image ? (
 							<View style={styles.imagePreview}>
 								<Image
-									source={{ uri: image }}
+									source={{ uri: image || "" }}
 									style={styles.uploadedImage}
 									contentFit="cover"
 								/>
@@ -752,20 +729,6 @@ export default function EditAccountPage() {
 						onLPChange={handleFlexLPChange}
 						onWinsChange={handleFlexWinsChange}
 					/>
-
-					<RankSelector
-						label="ĐTCL (TFT)"
-						rank={formData.tftRank}
-						division={formData.tftDivision}
-						lp={formData.tftLP}
-						wins={formData.tftWins}
-						rankOptions={rankOptions}
-						divisionOptions={divisionOptions}
-						onRankChange={handleTftRankChange}
-						onDivisionChange={handleTftDivisionChange}
-						onLPChange={handleTftLPChange}
-						onWinsChange={handleTftWinsChange}
-					/>
 				</View>
 
 				{/* Pricing */}
@@ -898,13 +861,13 @@ const styles = StyleSheet.create({
 	},
 	sectionLabel: {
 		fontSize: 14,
-		fontWeight: "500",
+		fontFamily: "Inter_500Medium",
 		color: colors.foreground,
 		marginBottom: 4,
 	},
 	sectionTitle: {
 		fontSize: 16,
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
 		color: colors.foreground,
 	},
 	checkboxContainer: {
@@ -937,7 +900,7 @@ const styles = StyleSheet.create({
 	},
 	checkboxLabel: {
 		fontSize: 14,
-		fontWeight: "500",
+		fontFamily: "Inter_500Medium",
 		color: colors.foreground,
 	},
 	imageUploadContainer: {
@@ -985,7 +948,7 @@ const styles = StyleSheet.create({
 	},
 	fieldLabel: {
 		fontSize: 14,
-		fontWeight: "500",
+		fontFamily: "Inter_500Medium",
 		color: colors.foreground,
 	},
 	textInput: {
@@ -1028,7 +991,7 @@ const styles = StyleSheet.create({
 	},
 	submitButtonText: {
 		fontSize: 16,
-		fontWeight: "600",
+		fontFamily: "Inter_600SemiBold",
 		color: colors.primaryForeground,
 	},
 	required: {

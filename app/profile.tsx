@@ -1,3 +1,4 @@
+import { createTransaction } from '@/actions/transaction.action'
 import { getUserById, updateUser } from '@/actions/user.action'
 import Background from '@/components/Background'
 import { ADMIN_BANK } from '@/libs/admin-bank'
@@ -213,8 +214,8 @@ export default function ProfileScreen() {
     setWithdrawDialogOpen(true)
   }
 
-  const handleWithdrawSubmit = () => {
-    if (!userData) return
+  const handleWithdrawSubmit = async () => {
+    if (!userData || !authUser) return
     
     const amount = Number(withdrawAmount)
     if (Number.isNaN(amount) || amount <= 0) {
@@ -226,10 +227,39 @@ export default function ProfileScreen() {
       return
     }
     
-    // TODO: Implement withdraw functionality with Firebase/API
-    ToastAndroid.show("Đã tạo lệnh rút tiền thành công", ToastAndroid.SHORT)
-    setWithdrawDialogOpen(false)
-    setWithdrawAmount("")
+    // Validate bank info
+    if (!userData.bankName || !userData.bankAccountNumber || !userData.bankAccountHolder) {
+      ToastAndroid.show("Vui lòng cập nhật thông tin ngân hàng trước khi rút tiền", ToastAndroid.SHORT)
+      setWithdrawDialogOpen(false)
+      return
+    }
+    
+    try {
+      // Create withdraw transaction with pending status
+      await createTransaction({
+        userId: authUser.uid,
+        amount: amount,
+        type: "withdraw",
+        method: "banking",
+        transactionCode: `WITHDRAW_${authUser.uid}_${Date.now()}`,
+      })
+      
+      ToastAndroid.show("Đã tạo lệnh rút tiền thành công. Vui lòng chờ admin xác nhận", ToastAndroid.SHORT)
+      setWithdrawDialogOpen(false)
+      setWithdrawAmount("")
+      
+      // Refresh user data to update balance if needed
+      const updatedUser = await getUserById(authUser.uid)
+      if (updatedUser) {
+        setUserData(updatedUser)
+      }
+    } catch (error: any) {
+      console.error("Error creating withdraw transaction:", error)
+      ToastAndroid.show(
+        error.message || "Không thể tạo lệnh rút tiền",
+        ToastAndroid.SHORT
+      )
+    }
   }
 
   const closeDepositDialog = () => {
@@ -257,7 +287,7 @@ export default function ProfileScreen() {
     return (
       <View className="flex-1 relative justify-center items-center" style={{ backgroundColor: colors.background }}>
         <Background />
-        <Text style={{ color: colors["lol-gold"], fontSize: 16, fontWeight: '600' }}>
+        <Text style={{ color: colors["lol-gold"], fontSize: 16, fontFamily: "Inter_700Bold" }}>
           Vui lòng đăng nhập để xem thông tin
         </Text>
       </View>
@@ -282,7 +312,7 @@ export default function ProfileScreen() {
           >
             <ArrowLeft size={20} color={colors.foreground} />
           </TouchableOpacity>
-          <Text className="text-xl font-semibold" style={{ color: colors.foreground }}>
+          <Text className="text-xl" style={{ color: colors.foreground, fontFamily: "Inter_700Bold" }}>
             Thông tin cá nhân
           </Text>
         </View>
@@ -307,15 +337,6 @@ export default function ProfileScreen() {
             <Text className="text-sm" style={{ color: colors.mutedForeground }}>
               ID: {userData.uid}
             </Text>
-            <View className="flex-row items-center gap-2 mt-1">
-              <View 
-                className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: colors.primary }}
-              />
-              <Text className="text-xs" style={{ color: colors.primary }}>
-                {userData.isActive ? "Đang hoạt động" : "Không hoạt động"}
-              </Text>
-            </View>
           </View>
         </View>
 
@@ -365,10 +386,10 @@ export default function ProfileScreen() {
         <View className="px-4 gap-3">
           <InfoField
             icon={UserIcon}
-            label="Tên đăng nhập"
+            label="Tên"
             value={username}
             onChangeText={setUsername}
-            placeholder="Nhập tên đăng nhập"
+            placeholder="Nhập tên"
           />
           <InfoField
             icon={Mail}
@@ -446,7 +467,7 @@ export default function ProfileScreen() {
             className="w-11/12 max-w-md rounded-lg p-6 gap-4"
             style={{ backgroundColor: colors.card }}
           >
-            <Text className="text-xl font-bold mb-2" style={{ color: colors.foreground }}>
+            <Text className="text-xl mb-2" style={{ color: colors.foreground, fontFamily: "Inter_700Bold" }}>
               Nạp tiền
             </Text>
             
@@ -479,7 +500,7 @@ export default function ProfileScreen() {
                   opacity: depositAmount && Number(depositAmount) > 0 ? 1 : 0.5
                 }}
               >
-                <Text className="text-center font-semibold" style={{ color: colors.primaryForeground }}>
+                <Text className="text-center" style={{ color: colors.primaryForeground, fontFamily: "Inter_600SemiBold" }}>
                   Tạo QR
                 </Text>
               </TouchableOpacity>
@@ -528,7 +549,7 @@ export default function ProfileScreen() {
               className="p-3 rounded-lg mt-2"
               style={{ backgroundColor: colors.muted }}
             >
-              <Text className="text-center font-semibold" style={{ color: colors.foreground }}>
+              <Text className="text-center" style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold" }}>
                 Đóng
               </Text>
             </TouchableOpacity>
@@ -548,7 +569,7 @@ export default function ProfileScreen() {
             className="w-11/12 max-w-md rounded-lg p-6 gap-4"
             style={{ backgroundColor: colors.card }}
           >
-            <Text className="text-xl font-bold mb-2" style={{ color: colors.foreground }}>
+            <Text className="text-xl mb-2" style={{ color: colors.foreground, fontFamily: "Inter_700Bold" }}>
               Rút tiền
             </Text>
             
@@ -591,7 +612,7 @@ export default function ProfileScreen() {
                 className="flex-1 p-3 rounded-lg"
                 style={{ backgroundColor: colors.muted }}
               >
-                <Text className="text-center font-semibold" style={{ color: colors.foreground }}>
+                <Text className="text-center" style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold" }}>
                   Hủy
                 </Text>
               </TouchableOpacity>
@@ -606,7 +627,7 @@ export default function ProfileScreen() {
                   opacity: withdrawAmount && Number(withdrawAmount) > 0 && Number(withdrawAmount) <= userData.balance ? 1 : 0.5
                 }}
               >
-                <Text className="text-center font-semibold" style={{ color: colors.primaryForeground }}>
+                <Text className="text-center" style={{ color: colors.primaryForeground, fontFamily: "Inter_600SemiBold" }}>
                   Tạo lệnh rút
                 </Text>
               </TouchableOpacity>
